@@ -6,7 +6,7 @@ const connectDB = async () => {
   
   while (retries > 0) {
     try {
-      const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/collectam';
+      const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/collectam';
       console.log('Attempting to connect to MongoDB:', mongoUri);
       
       const conn = await mongoose.connect(mongoUri, {

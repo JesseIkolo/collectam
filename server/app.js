@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const winston = require('winston');
+const { specs, swaggerUi, swaggerOptions } = require('./config/swagger');
 require('dotenv').config();
 
 const app = express();
@@ -14,7 +15,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
     },
   },
@@ -59,7 +60,7 @@ const logger = winston.createLogger({
     winston.format.errors({ stack: true }),
     winston.format.json()
   ),
-  defaultMeta: { service: 'nacollect-backend' },
+  defaultMeta: { service: 'collectam-backend' },
   transports: [
     new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
     new winston.transports.File({ filename: 'logs/combined.log' }),
@@ -76,6 +77,9 @@ if (process.env.NODE_ENV !== 'production') {
 const connectDB = require('./config/db');
 connectDB();
 
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, swaggerOptions));
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/collections', require('./routes/collections'));
@@ -87,7 +91,7 @@ app.use('/api/ads', require('./routes/ads'));
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Nacollect Backend is running',
+    message: 'Collectam Backend is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
@@ -112,10 +116,10 @@ app.use((error, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 5007;
 
 app.listen(PORT, () => {
-  logger.info(`Nacollect Backend running on port ${PORT}`);
+  logger.info(`Collectam Backend running on port ${PORT}`);
   console.log(`🚀 Server running on port ${PORT}`);
 });
 
