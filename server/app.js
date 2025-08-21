@@ -108,7 +108,7 @@ app.use('*', (req, res) => {
 // Global error handler
 app.use((error, req, res, next) => {
   logger.error('Unhandled error:', error);
-  
+
   res.status(error.status || 500).json({
     success: false,
     message: error.message || 'Internal server error',
@@ -116,11 +116,12 @@ app.use((error, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 5007;
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   logger.info(`Collectam Backend running on port ${PORT}`);
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
 });
 
 module.exports = app;

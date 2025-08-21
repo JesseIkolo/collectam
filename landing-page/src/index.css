@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #fafafa;
+  }
+}
+
+@layer components {
+  /* HeroUI inspired buttons */
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl backdrop-blur-sm;
+  }
+  
+  .btn-secondary {
+    @apply bg-white/80 backdrop-blur-md hover:bg-white text-primary-600 font-semibold py-3 px-6 rounded-xl border border-primary-200 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg;
+  }
+  
+  /* Flora inspired glass morphism */
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md border border-white/30 shadow-xl;
+  }
+  
+  .glass-dark {
+    @apply bg-gray-900/70 backdrop-blur-md border border-gray-700/30;
+  }
+  
+  /* HeroUI spacing and layout */
+  .section-padding {
+    @apply py-20 md:py-32;
+  }
+  
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  /* Flora inspired gradients */
+  .gradient-bg {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 30%, #bbf7d0 70%, #86efac 100%);
+  }
+  
+  .tech-gradient {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 30%, #bfdbfe 70%, #93c5fd 100%);
+  }
+  
+  /* HeroUI inspired interactive elements */
+  .interactive-card {
+    @apply transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 cursor-pointer;
+  }
+  
+  /* Flora inspired text effects */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-600 via-tech-600 to-primary-600 bg-clip-text text-transparent;
+  }
+  
+  /* HeroUI inspired animations */
+  .animate-on-scroll {
+    @apply opacity-0 translate-y-8 transition-all duration-700 ease-out;
+  }
+  
+  .animate-on-scroll.visible {
+    @apply opacity-100 translate-y-0;
+  }
+  
+  /* Flora inspired blur effects */
+  .blur-bg {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+}
