@@ -1,4 +1,5 @@
-const { body, param, query, validationResult } = require('express-validator');
+const { body, param, query, validationResult, oneOf } = require('express-validator');
+const E164_REGEX = /^\+?[1-9]\d{6,14}$/; // General E.164 pattern
 
 // User validation rules
 const userSignupValidation = [
@@ -10,9 +11,19 @@ const userSignupValidation = [
     .isLength({ min: 8 })
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
     .withMessage('Password must be at least 8 characters with uppercase, lowercase, number and special character'),
-  body('phone')
-    .isMobilePhone()
-    .withMessage('Valid phone number is required'),
+  oneOf([
+    body('phone').exists().bail().matches(E164_REGEX),
+    body('phoneNumber').exists().bail().matches(E164_REGEX),
+    body().custom((body) => {
+      const local = body.phone || body.phoneNumber;
+      const dial = body.dialCode || body.countryCode || body.phoneCode;
+      if (!local || !dial) return false;
+      const digits = String(local).replace(/\D/g, '');
+      const dialDigits = String(dial).replace(/\D/g, '');
+      const composed = `+${dialDigits}${digits}`;
+      return E164_REGEX.test(composed);
+    })
+  ], 'Valid phone number is required (use E.164, e.g., +237699553309)'),
   body('role')
     .optional()
     .isIn(['user', 'collector', 'manager', 'admin'])

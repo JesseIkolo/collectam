@@ -18,11 +18,29 @@ class CollectionController {
       const { location, wasteType, media, scheduledTime } = req.body;
       const userId = req.user.id;
 
+      // Support both formats: location.coordinates [lng, lat] and location.{longitude, latitude}
+      let coordinates;
+      if (location && Array.isArray(location.coordinates) && location.coordinates.length === 2) {
+        const [lng, lat] = location.coordinates.map(Number);
+        coordinates = [lng, lat];
+      } else if (
+        location &&
+        typeof location.longitude !== 'undefined' &&
+        typeof location.latitude !== 'undefined'
+      ) {
+        coordinates = [Number(location.longitude), Number(location.latitude)];
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid location. Provide coordinates [lng, lat] or longitude/latitude.'
+        });
+      }
+
       const collection = new Collection({
         userId,
         location: {
           type: 'Point',
-          coordinates: [location.longitude, location.latitude]
+          coordinates
         },
         wasteType,
         media,
@@ -55,9 +73,9 @@ class CollectionController {
       const { collectionId, scheduledTime } = req.body;
       const userId = req.user.id;
 
-      const collection = await Collection.findOne({ 
-        _id: collectionId, 
-        userId 
+      const collection = await Collection.findOne({
+        _id: collectionId,
+        userId
       });
 
       if (!collection) {
@@ -103,7 +121,7 @@ class CollectionController {
       const userRole = req.user.role;
 
       let query = { _id: id };
-      
+
       // Regular users can only see their own collections
       if (userRole === 'user') {
         query.userId = userId;
@@ -153,7 +171,7 @@ class CollectionController {
       // Only allow certain fields to be updated
       const allowedUpdates = ['scheduledTime', 'status'];
       const filteredUpdates = {};
-      
+
       allowedUpdates.forEach(field => {
         if (updates[field] !== undefined) {
           filteredUpdates[field] = updates[field];

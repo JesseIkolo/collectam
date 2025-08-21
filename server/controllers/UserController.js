@@ -15,7 +15,14 @@ class UserController {
         });
       }
 
-      const { email, password, phone, role = 'user' } = req.body;
+      const { email, password, role = 'user', address, firstName, lastName } = req.body;
+      let phone = req.body.phone || req.body.phoneNumber;
+      const dial = req.body.dialCode || req.body.countryCode || req.body.phoneCode;
+      if (phone && !/^\+/.test(phone) && dial) {
+        const digits = String(phone).replace(/\D/g, '');
+        const dialDigits = String(dial).replace(/\D/g, '');
+        phone = `+${dialDigits}${digits}`;
+      }
 
       // Check if user already exists
       const existingUser = await User.findOne({ email });
@@ -31,7 +38,10 @@ class UserController {
         email,
         password,
         phone,
-        role
+        role,
+        ...(firstName ? { firstName } : {}),
+        ...(lastName ? { lastName } : {}),
+        ...(address ? { address } : {})
       });
 
       await user.save();
@@ -46,6 +56,9 @@ class UserController {
           user: {
             id: user._id,
             email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            phone: user.phone,
             role: user.role,
             points: user.points,
             subscription: user.subscription

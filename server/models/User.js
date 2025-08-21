@@ -2,6 +2,14 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema({
+  firstName: {
+    type: String,
+    trim: true
+  },
+  lastName: {
+    type: String,
+    trim: true
+  },
   email: {
     type: String,
     required: true,
@@ -47,15 +55,21 @@ const userSchema = new mongoose.Schema({
       type: Date,
       default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     }
+  },
+  security: {
+    refreshTokens: {
+      type: [String],
+      default: []
+    }
   }
 }, {
   timestamps: true
 });
 
 // Pre-save middleware to hash password
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   try {
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
@@ -66,8 +80,27 @@ userSchema.pre('save', async function(next) {
 });
 
 // Method to compare password
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Add refresh token to user's security store
+userSchema.methods.addRefreshToken = async function (token) {
+  if (!this.security) {
+    this.security = { refreshTokens: [] };
+  }
+  if (!Array.isArray(this.security.refreshTokens)) {
+    this.security.refreshTokens = [];
+  }
+  this.security.refreshTokens.push(token);
+  await this.save();
+};
+
+// Remove refresh token from user's security store
+userSchema.methods.removeRefreshToken = async function (token) {
+  if (!this.security || !Array.isArray(this.security.refreshTokens)) return;
+  this.security.refreshTokens = this.security.refreshTokens.filter(t => t !== token);
+  await this.save();
 };
 
 module.exports = mongoose.model('User', userSchema);

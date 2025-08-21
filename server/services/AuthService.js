@@ -22,8 +22,10 @@ class AuthService {
       { expiresIn: '7d', algorithm: 'HS256' }
     );
 
-    // Store refresh token in user document
-    await user.addRefreshToken(refreshToken);
+    // Store refresh token in user document if supported
+    if (typeof user.addRefreshToken === 'function') {
+      await user.addRefreshToken(refreshToken);
+    }
 
     return { accessToken, refreshToken };
   }
@@ -54,10 +56,10 @@ class AuthService {
   async refreshAccessToken(refreshToken) {
     try {
       const decoded = this.verifyToken(refreshToken, process.env.JWT_REFRESH_SECRET);
-      
+
       const User = require('../models/User');
       const user = await User.findById(decoded.id);
-      
+
       if (!user || !user.security.refreshTokens.includes(refreshToken)) {
         throw new Error('Invalid refresh token');
       }
@@ -85,7 +87,7 @@ class AuthService {
   async revokeRefreshToken(userId, refreshToken) {
     const User = require('../models/User');
     const user = await User.findById(userId);
-    
+
     if (user) {
       await user.removeRefreshToken(refreshToken);
     }
