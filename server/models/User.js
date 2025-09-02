@@ -24,8 +24,12 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'collector', 'manager', 'admin'],
+    enum: ['user', 'collector', 'org_admin', 'admin'],
     default: 'user'
+  },
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization'
   },
   phone: {
     type: String,
@@ -41,6 +45,25 @@ const userSchema = new mongoose.Schema({
       index: '2dsphere'
     }
   },
+  // Realtime availability/state for collectors
+  onDuty: {
+    type: Boolean,
+    default: false
+  },
+  lastLocation: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],
+      index: '2dsphere'
+    }
+  },
+  lastSeenAt: {
+    type: Date
+  },
   points: {
     type: Number,
     default: 0
@@ -54,6 +77,13 @@ const userSchema = new mongoose.Schema({
     expiry: {
       type: Date,
       default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    }
+  },
+  preferences: {
+    notifications: {
+      sms: { type: Boolean, default: false },
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: false }
     }
   },
   security: {
@@ -102,5 +132,8 @@ userSchema.methods.removeRefreshToken = async function (token) {
   this.security.refreshTokens = this.security.refreshTokens.filter(t => t !== token);
   await this.save();
 };
+
+// Index for organization scoping
+userSchema.index({ organizationId: 1, role: 1 });
 
 module.exports = mongoose.model('User', userSchema);

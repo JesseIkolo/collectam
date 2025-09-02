@@ -1,7 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const UserController = require('../controllers/UserController');
-const { userSignupValidation, userLoginValidation, handleValidationErrors } = require('../middlewares/validation');
+const AuthExtrasController = require('../controllers/AuthExtrasController');
+const {
+    userSignupValidation,
+    userLoginValidation,
+    otpValidation,
+    otpVerifyValidation,
+    invitationIssueValidation,
+    invitationValidateValidation,
+    handleValidationErrors
+} = require('../middlewares/validation');
 const { authenticateToken } = require('../middlewares/auth');
 
 /**
@@ -17,12 +26,16 @@ const { authenticateToken } = require('../middlewares/auth');
  *           schema:
  *             type: object
  *             required:
+ *               - invitationToken
  *               - email
  *               - password
  *               - firstName
  *               - lastName
  *               - phoneNumber
  *             properties:
+ *               invitationToken:
+ *                 type: string
+ *                 example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *               email:
  *                 type: string
  *                 format: email
@@ -40,10 +53,6 @@ const { authenticateToken } = require('../middlewares/auth');
  *               phoneNumber:
  *                 type: string
  *                 example: +33123456789
- *               role:
- *                 type: string
- *                 enum: [user, collector]
- *                 default: user
  *     responses:
  *       201:
  *         description: User created successfully
@@ -59,7 +68,9 @@ const { authenticateToken } = require('../middlewares/auth');
  *                       properties:
  *                         user:
  *                           $ref: '#/components/schemas/User'
- *                         token:
+ *                         accessToken:
+ *                           type: string
+ *                         refreshToken:
  *                           type: string
  *       400:
  *         description: Validation error
@@ -114,7 +125,9 @@ router.post('/signup', userSignupValidation, handleValidationErrors, UserControl
  *                       properties:
  *                         user:
  *                           $ref: '#/components/schemas/User'
- *                         token:
+ *                         accessToken:
+ *                           type: string
+ *                         refreshToken:
  *                           type: string
  *       400:
  *         description: Validation error
@@ -152,8 +165,8 @@ router.post('/login', userLoginValidation, handleValidationErrors, UserControlle
  *                     data:
  *                       type: object
  *                       properties:
- *                         user:
- *                           $ref: '#/components/schemas/User'
+ *                         subscription:
+ *                           type: object
  *       401:
  *         description: Unauthorized - Invalid or missing token
  *         content:
@@ -168,5 +181,25 @@ router.post('/login', userLoginValidation, handleValidationErrors, UserControlle
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/upgrade', authenticateToken, UserController.upgradeSubscription);
+
+// OTP endpoints
+router.post('/request-otp', otpValidation, handleValidationErrors, AuthExtrasController.requestOTP);
+router.post('/verify-otp', otpVerifyValidation, handleValidationErrors, AuthExtrasController.verifyOTP);
+
+// Invitation endpoints (admin only)
+router.post('/invitations/issue', authenticateToken, invitationIssueValidation, handleValidationErrors, AuthExtrasController.issueInvitation);
+router.post('/invitations/validate', invitationValidateValidation, handleValidationErrors, AuthExtrasController.validateInvitation);
+
+// Profile routes
+router.get('/profile', authenticateToken, UserController.getProfile);
+router.put('/profile', authenticateToken, UserController.updateProfile);
+
+// Notification preferences
+router.get('/preferences', authenticateToken, UserController.getPreferences);
+router.put('/preferences', authenticateToken, UserController.updatePreferences);
+
+// Collector availability & heartbeat
+router.patch('/collectors/duty', authenticateToken, UserController.toggleDuty);
+router.post('/collectors/heartbeat', authenticateToken, UserController.heartbeat);
 
 module.exports = router;

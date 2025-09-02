@@ -1,12 +1,9 @@
+// Test app for Collectam Phase 1 tests
 const express = require('express');
-const mongoose = require('mongoose');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const winston = require('winston');
-const { specs, swaggerUi, swaggerOptions } = require('./config/swagger');
-const WebSocketService = require('./services/WebSocketService');
-require('dotenv').config();
 
 const app = express();
 
@@ -29,7 +26,7 @@ app.use(helmet({
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5000'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -74,21 +71,13 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-// Database connection
-const connectDB = require('./config/db');
-connectDB();
-
-// Swagger Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, swaggerOptions));
-
 // Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/collections', require('./routes/collections'));
-app.use('/api/missions', require('./routes/missions'));
-app.use('/api/vehicles', require('./routes/vehicles'));
-app.use('/api/ads', require('./routes/ads'));
-app.use('/api/business', require('./routes/business'));
-app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/auth', require('../routes/auth'));
+app.use('/api/collections', require('../routes/collections'));
+app.use('/api/missions', require('../routes/missions'));
+app.use('/api/vehicles', require('../routes/vehicles'));
+app.use('/api/ads', require('../routes/ads'));
+app.use('/api/business', require('../routes/business'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -118,19 +107,5 @@ app.use((error, req, res, next) => {
     ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
   });
 });
-
-const PORT = process.env.PORT || 5000;
-
-if (process.env.NODE_ENV !== 'test') {
-  const server = app.listen(PORT, () => {
-    logger.info(`Collectam Backend running on port ${PORT}`);
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-
-    // Initialize WebSocket service
-    WebSocketService.initialize(server);
-    console.log(`🔌 WebSocket service initialized`);
-  });
-}
 
 module.exports = app;

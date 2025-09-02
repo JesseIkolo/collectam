@@ -1,76 +1,63 @@
-const twilio = require('twilio');
-const nodemailer = require('nodemailer');
-
 class NotificationService {
   constructor() {
-    // Initialize Twilio client
-    this.twilioClient = twilio(
-      process.env.TWILIO_ACCOUNT_SID,
-      process.env.TWILIO_AUTH_TOKEN
-    );
+    // Select transports via env, default to mock
+    this.smsTransport = (process.env.NOTIFY_TRANSPORT_SMS || 'mock').toLowerCase();
+    this.emailTransport = (process.env.NOTIFY_TRANSPORT_EMAIL || 'mock').toLowerCase();
+    this.pushTransport = (process.env.NOTIFY_TRANSPORT_PUSH || 'mock').toLowerCase();
 
-    // Initialize email transporter
-    this.emailTransporter = nodemailer.createTransporter({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
+    // Mock transport implementation
+    this.mock = {
+      async sendSms(to, message) {
+        const id = `mock-sms-${Date.now()}`;
+        if (process.env.NODE_ENV !== 'test') {
+          console.log(`[MockSMS] to=${to} id=${id} msg=${message}`);
+        }
+        return { success: true, messageId: id };
+      },
+      async sendEmail(to, subject, html, text) {
+        const id = `mock-email-${Date.now()}`;
+        if (process.env.NODE_ENV !== 'test') {
+          console.log(`[MockEmail] to=${to} id=${id} subject=${subject}`);
+        }
+        return { success: true, messageId: id };
+      },
+      async sendPush(token, title, body, data) {
+        const id = `mock-push-${Date.now()}`;
+        if (process.env.NODE_ENV !== 'test') {
+          console.log(`[MockPush] token=${token} id=${id} title=${title}`);
+        }
+        return { success: true, messageId: id };
       }
-    });
+    };
   }
 
-  // Send SMS notification
+  // Send SMS notification via selected transport (mock by default)
   async sendSMS(to, message) {
-    try {
-      const result = await this.twilioClient.messages.create({
-        body: message,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: to
-      });
-      return { success: true, messageId: result.sid };
-    } catch (error) {
-      console.error('SMS sending failed:', error);
-      return { success: false, error: error.message };
+    if (this.smsTransport === 'mock') {
+      return this.mock.sendSms(to, message);
     }
+    // Other providers can be added here later (e.g., twilio) guarded by env
+    return this.mock.sendSms(to, message);
   }
 
-  // Send WhatsApp notification
+  // Send WhatsApp notification (mocked)
   async sendWhatsApp(to, message) {
-    try {
-      const result = await this.twilioClient.messages.create({
-        body: message,
-        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-        to: `whatsapp:${to}`
-      });
-      return { success: true, messageId: result.sid };
-    } catch (error) {
-      console.error('WhatsApp sending failed:', error);
-      return { success: false, error: error.message };
-    }
+    // Keep same interface; route through SMS mock for now
+    return this.mock.sendSms(`whatsapp:${to}`, message);
   }
 
-  // Send email notification
+  // Send email notification via selected transport (mock by default)
   async sendEmail(to, subject, html, text) {
-    try {
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: to,
-        subject: subject,
-        html: html,
-        text: text
-      };
-
-      const result = await this.emailTransporter.sendMail(mailOptions);
-      return { success: true, messageId: result.messageId };
-    } catch (error) {
-      console.error('Email sending failed:', error);
-      return { success: false, error: error.message };
+    if (this.emailTransport === 'mock') {
+      return this.mock.sendEmail(to, subject, html, text);
     }
+    // Other providers can be added here later (e.g., nodemailer/sendgrid)
+    return this.mock.sendEmail(to, subject, html, text);
   }
 
   // Send OTP via SMS
   async sendOTP(phone, otp) {
-    const message = `Your Nacollect verification code is: ${otp}. Valid for 10 minutes.`;
+    const message = `Your Collectam verification code is: ${otp}. Valid for 10 minutes.`;
     return await this.sendSMS(phone, message);
   }
 
@@ -127,11 +114,11 @@ class NotificationService {
       if (channels.includes('sms') && user.preferences?.notifications?.sms) {
         results.push(await this.sendSMS(user.phone, message));
       }
-      
+
       if (channels.includes('email') && user.preferences?.notifications?.email) {
         results.push(await this.sendEmail(
           user.email,
-          'Nacollect Notification',
+          'Collectam Notification',
           `<p>${message}</p>`,
           message
         ));

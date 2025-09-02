@@ -71,7 +71,8 @@ const { collectionReportValidation, collectionScheduleValidation, handleValidati
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/report', authenticateToken, collectionReportValidation, handleValidationErrors, CollectionController.reportCollection);
+// Report collection
+router.post('/report', authenticateToken, collectionReportValidation, handleValidationErrors, (req, res) => CollectionController.report(req, res));
 
 /**
  * @swagger
@@ -129,7 +130,8 @@ router.post('/report', authenticateToken, collectionReportValidation, handleVali
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/schedule', authenticateToken, collectionScheduleValidation, handleValidationErrors, CollectionController.scheduleCollection);
+// Schedule collection
+router.post('/schedule', authenticateToken, collectionScheduleValidation, handleValidationErrors, (req, res) => CollectionController.schedule(req, res));
 
 /**
  * @swagger
@@ -202,7 +204,8 @@ router.post('/schedule', authenticateToken, collectionScheduleValidation, handle
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/', authenticateToken, CollectionController.getUserCollections);
+// Get user collections
+router.get('/', authenticateToken, (req, res) => CollectionController.getUserCollections(req, res));
 
 /**
  * @swagger
@@ -244,7 +247,8 @@ router.get('/', authenticateToken, CollectionController.getUserCollections);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/:id', authenticateToken, CollectionController.getCollectionById);
+// Get collection by ID
+router.get('/:id', authenticateToken, (req, res) => CollectionController.getCollectionById(req, res));
 
 /**
  * @swagger
@@ -381,6 +385,7 @@ router.put('/:id', authenticateToken, CollectionController.updateCollection);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/status/:status', authenticateToken, authorize('collector', 'manager', 'admin'), CollectionController.getCollectionsByStatus);
+// Get collections by status (collector/manager/admin)
+router.get('/status/:status', authenticateToken, authorize('collector', 'manager', 'admin'), (req, res) => CollectionController.getCollectionsByStatus(req, res));
 
 module.exports = router;

@@ -4,34 +4,51 @@ const User = require('../models/User');
 const Vehicle = require('../models/Vehicle');
 
 class MatchingService {
-  // AI-based collector assignment algorithm
-  async assignOptimalCollector(collectionId) {
+  // Backward-compatible alias used by controllers
+  async assignCollector(collectionId, organizationId) {
+    return this.assignOptimalCollector(collectionId, organizationId);
+  }
+
+  // AI-based collector assignment algorithm (scoped by organization when provided)
+  async assignOptimalCollector(collectionId, organizationId) {
     try {
       const collection = await Collection.findById(collectionId).populate('userId');
       if (!collection) {
         throw new Error('Collection not found');
       }
 
-      // Get available collectors within radius
+      // Determine org-scoped settings if available
+      let radius = 10000;
+      let maxActive = 5;
+      try {
+        const Organization = require('../models/Organization');
+        const org = organizationId ? await Organization.findById(organizationId).select('settings') : null;
+        if (org && org.settings) {
+          radius = org.settings.autoAssignRadiusMeters || radius;
+          maxActive = org.settings.maxActiveMissionsPerCollector || maxActive;
+        }
+      } catch (_) { /* use defaults if any issue */ }
+
+      // Get available collectors within radius or all if coordinates missing
       const availableCollectors = await this.getAvailableCollectors(
-        collection.location.coordinates,
-        10000 // 10km radius
+        collection.location?.coordinates,
+        radius,
+        organizationId,
+        maxActive
       );
 
       if (availableCollectors.length === 0) {
-        throw new Error('No available collectors in the area');
+        throw new Error('No available collectors');
       }
 
       // Score collectors based on multiple factors
       const scoredCollectors = await this.scoreCollectors(collection, availableCollectors);
-
-      // Sort by score (highest first)
       scoredCollectors.sort((a, b) => b.score - a.score);
 
       return {
         success: true,
-        recommendedCollector: scoredCollectors[0],
-        alternatives: scoredCollectors.slice(1, 3)
+        recommendedCollector: scoredCollectors[0].collector,
+        alternatives: scoredCollectors.slice(1, 3).map(s => s.collector)
       };
     } catch (error) {
       return {
@@ -41,74 +58,83 @@ class MatchingService {
     }
   }
 
-  // Get available collectors within radius
-  async getAvailableCollectors(coordinates, radiusInMeters) {
-    const collectors = await User.find({
-      role: 'collector',
-      'address.coordinates': {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: coordinates
-          },
-          $maxDistance: radiusInMeters
-        }
-      }
-    }).populate('currentMissions');
+  // Get available collectors within radius, scoped by organization
+  async getAvailableCollectors(coordinates, radiusInMeters, organizationId, maxActiveMissionsPerCollector = 5) {
+    const baseFilter = { role: 'collector', onDuty: true };
+    if (organizationId) baseFilter.organizationId = organizationId;
 
-    // Filter out busy collectors
-    return collectors.filter(collector => {
-      const activeMissions = collector.currentMissions?.filter(
-        mission => mission.status === 'in-progress'
-      ) || [];
-      return activeMissions.length < 3; // Max 3 concurrent missions
-    });
+    // If we have coordinates, try geospatial proximity; if none found, fallback to non-geo list
+    if (coordinates && Array.isArray(coordinates) && coordinates.length === 2) {
+      try {
+        const collectors = await User.find({
+          ...baseFilter,
+          'address.coordinates': {
+            $near: {
+              $geometry: { type: 'Point', coordinates },
+              $maxDistance: radiusInMeters
+            }
+          }
+        });
+        const nearby = this.filterAvailable(collectors);
+        if (nearby && nearby.length > 0) {
+          return nearby;
+        }
+        // If geospatial search yields no results, fall through to non-geo search
+      } catch (_) {
+        // Fall through to non-geo
+      }
+    }
+
+    const collectors = await User.find(baseFilter).limit(100);
+    return this.filterAvailable(collectors, maxActiveMissionsPerCollector);
   }
 
-  // Score collectors based on multiple factors
+  async countActiveMissionsForCollector(collectorId, organizationId) {
+    try {
+      const Mission = require('../models/Mission');
+      return Mission.countDocuments({ collectorId, organizationId, status: { $in: ['assigned', 'in-progress'] } });
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  async filterAvailable(collectors, maxActiveMissionsPerCollector = 5) {
+    const filtered = [];
+    for (const c of collectors) {
+      const active = await this.countActiveMissionsForCollector(c._id, c.organizationId);
+      if (active < maxActiveMissionsPerCollector) filtered.push(c);
+    }
+    return filtered;
+  }
+
+  // Score collectors based on distance and simple heuristics
   async scoreCollectors(collection, collectors) {
     const scoredCollectors = [];
 
     for (const collector of collectors) {
       let score = 0;
 
-      // Distance factor (closer = higher score)
-      const distance = geolib.getDistance(
-        { latitude: collection.location.coordinates[1], longitude: collection.location.coordinates[0] },
-        { latitude: collector.address.coordinates[1], longitude: collector.address.coordinates[0] }
-      );
-      const distanceScore = Math.max(0, 100 - (distance / 100)); // 100 points max, -1 per 100m
-      score += distanceScore * 0.4; // 40% weight
+      // Distance factor if both have coordinates
+      let distance = 100000; // default large distance
+      if (collection.location?.coordinates && collector.address?.coordinates) {
+        distance = geolib.getDistance(
+          { latitude: collection.location.coordinates[1], longitude: collection.location.coordinates[0] },
+          { latitude: collector.address.coordinates[1], longitude: collector.address.coordinates[0] }
+        );
+      }
+      const distanceScore = Math.max(0, 100 - (distance / 100));
+      score += distanceScore * 0.6;
 
-      // Rating factor
-      const ratingScore = (collector.rating || 4.0) * 20; // 0-100 scale
-      score += ratingScore * 0.3; // 30% weight
-
-      // Experience factor (completed collections)
+      // Experience factor (optional fields)
       const experienceScore = Math.min(100, (collector.completedCollections || 0) * 2);
-      score += experienceScore * 0.2; // 20% weight
+      score += experienceScore * 0.2;
 
-      // Availability factor (fewer active missions = higher score)
-      const activeMissions = collector.currentMissions?.filter(
-        mission => mission.status === 'in-progress'
-      )?.length || 0;
+      // Light load factor (fewer active missions preferred)
+      const activeMissions = (collector.currentMissions || []).filter(m => m.status === 'in-progress').length;
       const availabilityScore = Math.max(0, 100 - (activeMissions * 33));
-      score += availabilityScore * 0.1; // 10% weight
+      score += availabilityScore * 0.2;
 
-      scoredCollectors.push({
-        collector,
-        score: Math.round(score),
-        factors: {
-          distance: Math.round(distance),
-          distanceScore: Math.round(distanceScore),
-          rating: collector.rating || 4.0,
-          ratingScore: Math.round(ratingScore),
-          experience: collector.completedCollections || 0,
-          experienceScore: Math.round(experienceScore),
-          activeMissions,
-          availabilityScore: Math.round(availabilityScore)
-        }
-      });
+      scoredCollectors.push({ collector, score });
     }
 
     return scoredCollectors;
@@ -126,11 +152,13 @@ class MatchingService {
         throw new Error('Invalid collector or collections');
       }
 
-      // Simple nearest neighbor algorithm for route optimization
-      const optimizedRoute = this.nearestNeighborRoute(
-        collector.address.coordinates,
-        collections
-      );
+      // choose start coordinates: prefer lastLocation, then address, else first collection
+      let startCoordinates = collector?.lastLocation?.coordinates || collector?.address?.coordinates;
+      if (!startCoordinates && collections[0]?.location?.coordinates) {
+        startCoordinates = collections[0].location.coordinates;
+      }
+
+      const optimizedRoute = this.nearestNeighborRoute(startCoordinates, collections);
 
       return {
         success: true,
@@ -139,14 +167,10 @@ class MatchingService {
         estimatedTime: this.estimateRouteTime(optimizedRoute)
       };
     } catch (error) {
-      return {
-        success: false,
-        error: error.message
-      };
+      return { success: false, error: error.message };
     }
   }
 
-  // Nearest neighbor route optimization
   nearestNeighborRoute(startCoordinates, collections) {
     const route = [];
     let currentPosition = startCoordinates;
@@ -169,78 +193,45 @@ class MatchingService {
       });
 
       const nextCollection = remainingCollections.splice(nearestIndex, 1)[0];
-      route.push({
-        collection: nextCollection,
-        distance: shortestDistance
-      });
+      route.push({ collection: nextCollection, distance: shortestDistance });
       currentPosition = nextCollection.location.coordinates;
     }
 
     return route;
   }
 
-  // Calculate total route distance
-  calculateTotalDistance(route) {
-    return route.reduce((total, stop) => total + stop.distance, 0);
-  }
+  calculateTotalDistance(route) { return route.reduce((total, stop) => total + stop.distance, 0); }
 
-  // Estimate route completion time
   estimateRouteTime(route) {
     const totalDistance = this.calculateTotalDistance(route);
     const averageSpeed = 30; // km/h in urban areas
-    const collectionTime = route.length * 15; // 15 minutes per collection
-    
-    const travelTime = (totalDistance / 1000) / averageSpeed * 60; // minutes
+    const collectionTime = route.length * 15; // minutes per collection
+    const travelTime = (totalDistance / 1000) / averageSpeed * 60;
     return Math.round(travelTime + collectionTime);
   }
 
-  // Generate heatmap data for waste hotspots
   async generateHeatmapData(bounds, timeframe = 30) {
     try {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - timeframe);
-
       const collections = await Collection.find({
         createdAt: { $gte: startDate },
-        'location.coordinates': {
-          $geoWithin: {
-            $box: bounds // [[lng1, lat1], [lng2, lat2]]
-          }
-        }
+        'location.coordinates': { $geoWithin: { $box: bounds } }
       });
-
-      // Group collections by grid cells
-      const gridSize = 0.001; // ~100m grid
+      const gridSize = 0.001;
       const heatmapData = {};
-
       collections.forEach(collection => {
         const [lng, lat] = collection.location.coordinates;
         const gridLng = Math.floor(lng / gridSize) * gridSize;
         const gridLat = Math.floor(lat / gridSize) * gridSize;
         const key = `${gridLng},${gridLat}`;
-
-        if (!heatmapData[key]) {
-          heatmapData[key] = {
-            coordinates: [gridLng, gridLat],
-            count: 0,
-            wasteTypes: {}
-          };
-        }
-
+        if (!heatmapData[key]) heatmapData[key] = { coordinates: [gridLng, gridLat], count: 0, wasteTypes: {} };
         heatmapData[key].count++;
-        heatmapData[key].wasteTypes[collection.wasteType] = 
-          (heatmapData[key].wasteTypes[collection.wasteType] || 0) + 1;
+        heatmapData[key].wasteTypes[collection.wasteType] = (heatmapData[key].wasteTypes[collection.wasteType] || 0) + 1;
       });
-
-      return {
-        success: true,
-        data: Object.values(heatmapData)
-      };
+      return { success: true, data: Object.values(heatmapData) };
     } catch (error) {
-      return {
-        success: false,
-        error: error.message
-      };
+      return { success: false, error: error.message };
     }
   }
 }

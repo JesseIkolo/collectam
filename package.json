@@ -41,7 +41,9 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "twilio": "^4.15.0",
-    "winston": "^3.10.0"
+    "uuid": "^9.0.0",
+    "winston": "^3.10.0",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "@types/jest": "^29.5.5",

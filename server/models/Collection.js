@@ -6,13 +6,17 @@ const collectionSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization'
+  },
   collectorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
   status: {
     type: String,
-    enum: ['pending', 'in-progress', 'completed'],
+    enum: ['pending', 'scheduled', 'in-progress', 'completed'],
     default: 'pending'
   },
   location: {
@@ -30,11 +34,19 @@ const collectionSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  quantity: {
+    type: Number,
+    min: 0
+  },
+  description: String,
   media: [{
     url: String,
     type: String
   }],
   scheduledTime: {
+    type: Date
+  },
+  scheduledDate: {
     type: Date
   }
 }, {
@@ -42,5 +54,7 @@ const collectionSchema = new mongoose.Schema({
 });
 
 collectionSchema.index({ location: '2dsphere' });
+collectionSchema.index({ organizationId: 1, status: 1 });
+collectionSchema.index({ organizationId: 1, userId: 1 });
 
 module.exports = mongoose.model('Collection', collectionSchema);

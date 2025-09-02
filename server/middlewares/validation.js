@@ -3,6 +3,9 @@ const E164_REGEX = /^\+?[1-9]\d{6,14}$/; // General E.164 pattern
 
 // User validation rules
 const userSignupValidation = [
+  body('invitationToken')
+    .notEmpty()
+    .withMessage('Invitation token is required'),
   body('email')
     .isEmail()
     .normalizeEmail()
@@ -11,6 +14,14 @@ const userSignupValidation = [
     .isLength({ min: 8 })
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
     .withMessage('Password must be at least 8 characters with uppercase, lowercase, number and special character'),
+  body('firstName')
+    .notEmpty()
+    .trim()
+    .withMessage('First name is required'),
+  body('lastName')
+    .notEmpty()
+    .trim()
+    .withMessage('Last name is required'),
   oneOf([
     body('phone').exists().bail().matches(E164_REGEX),
     body('phoneNumber').exists().bail().matches(E164_REGEX),
@@ -23,11 +34,7 @@ const userSignupValidation = [
       const composed = `+${dialDigits}${digits}`;
       return E164_REGEX.test(composed);
     })
-  ], 'Valid phone number is required (use E.164, e.g., +237699553309)'),
-  body('role')
-    .optional()
-    .isIn(['user', 'collector', 'manager', 'admin'])
-    .withMessage('Invalid role')
+  ], 'Valid phone number is required (use E.164, e.g., +237699553309)')
 ];
 
 const userLoginValidation = [
@@ -38,6 +45,47 @@ const userLoginValidation = [
   body('password')
     .notEmpty()
     .withMessage('Password is required')
+];
+
+// OTP validation
+const otpValidation = [
+  body('recipient')
+    .notEmpty()
+    .withMessage('Recipient (email or phone) is required'),
+  body('channel')
+    .optional()
+    .isIn(['sms', 'email'])
+    .withMessage('Channel must be sms or email')
+];
+
+const otpVerifyValidation = [
+  body('recipient')
+    .notEmpty()
+    .withMessage('Recipient is required'),
+  body('code')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('OTP code must be 6 digits'),
+  body('channel')
+    .optional()
+    .isIn(['sms', 'email'])
+    .withMessage('Channel must be sms or email')
+];
+
+// Invitation validation
+const invitationIssueValidation = [
+  body('role')
+    .isIn(['user', 'collector', 'org_admin', 'admin'])
+    .withMessage('Invalid role'),
+  body('organizationId')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid organization ID')
+];
+
+const invitationValidateValidation = [
+  body('token')
+    .notEmpty()
+    .withMessage('Invitation token is required')
 ];
 
 // Collection validation rules
@@ -80,9 +128,67 @@ const missionValidation = [
   body('collectionId')
     .isMongoId()
     .withMessage('Valid collection ID is required'),
+  body('collectorId')
+    .optional()
+    .isMongoId()
+    .withMessage('Valid collector ID is required'),
   body('vehicleId')
+    .optional()
     .isMongoId()
     .withMessage('Valid vehicle ID is required')
+];
+
+const missionStatusUpdateValidation = [
+  body('status')
+    .isIn(['planned', 'assigned', 'in-progress', 'blocked', 'completed', 'cancelled'])
+    .withMessage('Invalid mission status'),
+  body('blockReason.reason')
+    .optional()
+    .isIn(['vehicle_breakdown', 'access_denied', 'collector_unavailable', 'other'])
+    .withMessage('Invalid block reason'),
+  body('blockReason.description')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Block description must be less than 500 characters'),
+  body('proofs.before.photo')
+    .optional()
+    .isURL()
+    .withMessage('Before photo must be a valid URL'),
+  body('proofs.after.photo')
+    .optional()
+    .isURL()
+    .withMessage('After photo must be a valid URL'),
+  body('location.coordinates')
+    .optional()
+    .isArray({ min: 2, max: 2 })
+    .withMessage('Location coordinates must be [longitude, latitude]')
+];
+
+// Mission reassignment validation
+const missionReassignValidation = [
+  body('collectorId')
+    .isMongoId()
+    .withMessage('Valid collector ID is required'),
+  body('vehicleId')
+    .optional()
+    .isMongoId()
+    .withMessage('Valid vehicle ID is required'),
+  body('reason')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Reason must be less than 500 characters')
+];
+
+const routeOptimizationValidation = [
+  body('collectorId')
+    .isMongoId()
+    .withMessage('Valid collector ID is required'),
+  body('collectionIds')
+    .isArray({ min: 1, max: 100 })
+    .withMessage('collectionIds must be an array of IDs'),
+  body('collectionIds.*')
+    .isMongoId()
+    .withMessage('Each collectionId must be a valid ID')
 ];
 
 // Vehicle validation rules
@@ -130,9 +236,16 @@ const handleValidationErrors = (req, res, next) => {
 module.exports = {
   userSignupValidation,
   userLoginValidation,
+  otpValidation,
+  otpVerifyValidation,
+  invitationIssueValidation,
+  invitationValidateValidation,
   collectionReportValidation,
   collectionScheduleValidation,
   missionValidation,
+  missionStatusUpdateValidation,
+  missionReassignValidation,
+  routeOptimizationValidation,
   vehicleRegistrationValidation,
   adCreationValidation,
   handleValidationErrors

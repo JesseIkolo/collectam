@@ -1,53 +1,47 @@
 const User = require('../models/User');
 const AuthService = require('../services/AuthService');
-const { validationResult } = require('express-validator');
+const InvitationService = require('../services/InvitationService');
 
 class UserController {
-  // Handle user signup
+  // Signup with invitation token
   async signup(req, res) {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Validation errors',
-          errors: errors.array()
-        });
+      const { invitationToken, firstName, lastName, email, password, phone } = req.body;
+
+      if (!invitationToken) {
+        return res.status(400).json({ success: false, message: 'Invitation token required' });
       }
 
-      const { email, password, role = 'user', address, firstName, lastName } = req.body;
-      let phone = req.body.phone || req.body.phoneNumber;
-      const dial = req.body.dialCode || req.body.countryCode || req.body.phoneCode;
-      if (phone && !/^\+/.test(phone) && dial) {
-        const digits = String(phone).replace(/\D/g, '');
-        const dialDigits = String(dial).replace(/\D/g, '');
-        phone = `+${dialDigits}${digits}`;
+      // Validate invitation
+      const invitationResult = await InvitationService.validate(invitationToken);
+      if (!invitationResult.ok) {
+        return res.status(400).json({ success: false, message: `Invalid invitation: ${invitationResult.reason}` });
       }
+
+      const { role, organizationId } = invitationResult.payload;
 
       // Check if user already exists
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        return res.status(409).json({
-          success: false,
-          message: 'User already exists with this email'
-        });
+        return res.status(409).json({ success: false, message: 'User already exists' });
       }
 
-      // Create new user
-      const user = new User({
+      // Create user
+      const user = await User.create({
+        firstName,
+        lastName,
         email,
         password,
         phone,
         role,
-        ...(firstName ? { firstName } : {}),
-        ...(lastName ? { lastName } : {}),
-        ...(address ? { address } : {})
+        organizationId
       });
 
-      await user.save();
+      // Consume invitation
+      await InvitationService.consume(invitationResult.payload.jti);
 
       // Generate tokens
-      const { accessToken, refreshToken } = await AuthService.generateTokens(user);
+      const tokens = await AuthService.generateTokens(user);
 
       res.status(201).json({
         success: true,
@@ -55,61 +49,44 @@ class UserController {
         data: {
           user: {
             id: user._id,
-            email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            phone: user.phone,
+            email: user.email,
             role: user.role,
-            points: user.points,
-            subscription: user.subscription
+            organizationId: user.organizationId
           },
-          accessToken
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken
         }
       });
-
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Internal server error',
+        message: 'Failed to create user',
         error: error.message
       });
     }
   }
 
-  // Handle user login
+  // Login
   async login(req, res) {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Validation errors',
-          errors: errors.array()
-        });
-      }
-
       const { email, password } = req.body;
 
       // Find user
       const user = await User.findOne({ email });
       if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials'
-        });
+        return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
 
-      // Check password
-      const isPasswordValid = await user.comparePassword(password);
-      if (!isPasswordValid) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials'
-        });
+      // Verify password
+      const isValidPassword = await user.comparePassword(password);
+      if (!isValidPassword) {
+        return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
 
       // Generate tokens
-      const { accessToken, refreshToken } = await AuthService.generateTokens(user);
+      const tokens = await AuthService.generateTokens(user);
 
       res.json({
         success: true,
@@ -117,64 +94,188 @@ class UserController {
         data: {
           user: {
             id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
             email: user.email,
             role: user.role,
-            points: user.points,
-            subscription: user.subscription
+            organizationId: user.organizationId
           },
-          accessToken
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken
         }
       });
-
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Internal server error',
+        message: 'Login failed',
         error: error.message
       });
     }
   }
 
-  // Handle subscription upgrade
+  // Upgrade subscription
   async upgradeSubscription(req, res) {
     try {
-      const { plan } = req.body;
       const userId = req.user.id;
+      const { plan } = req.body;
 
       if (!['basic', 'premium'].includes(plan)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid subscription plan'
-        });
+        return res.status(400).json({ success: false, message: 'Invalid plan' });
       }
 
       const user = await User.findById(userId);
       if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found'
-        });
+        return res.status(404).json({ success: false, message: 'User not found' });
       }
 
-      // Update subscription
       user.subscription.plan = plan;
-      user.subscription.expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      user.subscription.expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
       await user.save();
 
       res.json({
         success: true,
-        message: `Subscription upgraded to ${plan}`,
+        message: 'Subscription upgraded successfully',
         data: {
           subscription: user.subscription
         }
       });
-
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Internal server error',
+        message: 'Failed to upgrade subscription',
         error: error.message
       });
+    }
+  }
+
+  // Get user profile
+  async getProfile(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const user = await User.findById(userId).select('-password');
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      res.json({
+        success: true,
+        data: { user }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch profile',
+        error: error.message
+      });
+    }
+  }
+
+  // Update user profile
+  async updateProfile(req, res) {
+    try {
+      const userId = req.user.id;
+      const { firstName, lastName, phone, address } = req.body;
+
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      if (firstName) user.firstName = firstName;
+      if (lastName) user.lastName = lastName;
+      if (phone) user.phone = phone;
+      if (address) user.address = address;
+
+      await user.save();
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: { user }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update profile',
+        error: error.message
+      });
+    }
+  }
+
+  // Get notification preferences
+  async getPreferences(req, res) {
+    try {
+      const userId = req.user.id;
+      const user = await User.findById(userId).select('preferences');
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+      res.json({ success: true, data: { preferences: user.preferences || {} } });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to fetch preferences', error: error.message });
+    }
+  }
+
+  // Update notification preferences
+  async updatePreferences(req, res) {
+    try {
+      const userId = req.user.id;
+      const { sms, email, push } = req.body?.notifications || {};
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+      user.preferences = user.preferences || { notifications: {} };
+      if (typeof sms === 'boolean') user.preferences.notifications.sms = sms;
+      if (typeof email === 'boolean') user.preferences.notifications.email = email;
+      if (typeof push === 'boolean') user.preferences.notifications.push = push;
+      await user.save();
+      res.json({ success: true, message: 'Preferences updated', data: { preferences: user.preferences } });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to update preferences', error: error.message });
+    }
+  }
+
+  // Collector: toggle on-duty status
+  async toggleDuty(req, res) {
+    try {
+      const userId = req.user.id;
+      const { onDuty } = req.body;
+
+      if (typeof onDuty !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'onDuty must be boolean' });
+      }
+
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+      if (user.role !== 'collector') return res.status(403).json({ success: false, message: 'Only collectors can toggle duty' });
+
+      user.onDuty = onDuty;
+      user.lastSeenAt = new Date();
+      await user.save();
+
+      res.json({ success: true, message: 'Duty status updated', data: { onDuty: user.onDuty } });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to update duty', error: error.message });
+    }
+  }
+
+  // Collector: heartbeat with location
+  async heartbeat(req, res) {
+    try {
+      const userId = req.user.id;
+      const { coordinates } = req.body; // [lng, lat]
+
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+      if (user.role !== 'collector') return res.status(403).json({ success: false, message: 'Only collectors can send heartbeat' });
+
+      if (coordinates && Array.isArray(coordinates) && coordinates.length === 2) {
+        user.lastLocation = { type: 'Point', coordinates };
+      }
+      user.lastSeenAt = new Date();
+      await user.save();
+
+      res.json({ success: true, message: 'Heartbeat received' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to record heartbeat', error: error.message });
     }
   }
 }

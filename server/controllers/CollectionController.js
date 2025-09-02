@@ -17,6 +17,7 @@ class CollectionController {
 
       const { location, wasteType, media, scheduledTime } = req.body;
       const userId = req.user.id;
+      const organizationId = req.user.organizationId || req.body.organizationId;
 
       // Support both formats: location.coordinates [lng, lat] and location.{longitude, latitude}
       let coordinates;
@@ -38,10 +39,8 @@ class CollectionController {
 
       const collection = new Collection({
         userId,
-        location: {
-          type: 'Point',
-          coordinates
-        },
+        organizationId,
+        location: { type: 'Point', coordinates },
         wasteType,
         media,
         scheduledTime
@@ -49,8 +48,8 @@ class CollectionController {
 
       await collection.save();
 
-      // Trigger AI matching for assignment
-      await MatchingService.assignCollector(collection._id);
+      // Trigger AI matching for assignment (fire-and-forget)
+      try { await MatchingService.assignCollector(collection._id, organizationId); } catch (_) { }
 
       res.status(201).json({
         success: true,
@@ -105,7 +104,7 @@ class CollectionController {
 
   // Report collection (alias for report method)
   async reportCollection(req, res) {
-    return this.report(req, res);
+    return await this.report(req, res);
   }
 
   // Schedule collection (alias for schedule method)

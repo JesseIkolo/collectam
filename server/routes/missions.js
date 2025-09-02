@@ -1,32 +1,35 @@
 const express = require('express');
 const router = express.Router();
 const MissionController = require('../controllers/MissionController');
-const { authenticateToken, authorize } = require('../middlewares/auth');
-const { missionValidation, handleValidationErrors } = require('../middlewares/validation');
+const { authenticateToken } = require('../middlewares/auth');
+const { requireOrgScope, scopeToOrganization } = require('../middlewares/orgScope');
+const {
+    missionValidation,
+    missionStatusUpdateValidation,
+    missionReassignValidation,
+    routeOptimizationValidation,
+    handleValidationErrors
+} = require('../middlewares/validation');
 
-// @route   POST api/missions/assign
-// @desc    Assign a collection to a collector
-// @access  Private (manager, admin)
-router.post('/assign', authenticateToken, authorize('manager', 'admin'), missionValidation, handleValidationErrors, MissionController.assignMission);
+// Apply organization scoping to all routes
+router.use(authenticateToken, requireOrgScope, scopeToOrganization);
 
-// @route   POST api/missions/validate
-// @desc    Validate a mission with QR code
-// @access  Private (collector)
-router.post('/validate', authenticateToken, authorize('collector'), MissionController.validateMission);
+// Create new mission (admin/org_admin only)
+router.post('/', missionValidation, handleValidationErrors, MissionController.create);
 
-// @route   GET api/missions/collector
-// @desc    Get all missions for the logged-in collector
-// @access  Private (collector)
-router.get('/collector', authenticateToken, authorize('collector'), MissionController.getCollectorMissions);
+// Get missions with filtering and pagination
+router.get('/', MissionController.getMissions);
 
-// @route   GET api/missions/:id
-// @desc    Get a specific mission by ID
-// @access  Private (collector, manager, admin)
-router.get('/:id', authenticateToken, authorize('collector', 'manager', 'admin'), MissionController.getMissionById);
+// Get specific mission
+router.get('/:missionId', MissionController.getMission);
 
-// @route   PUT api/missions/:id/status
-// @desc    Update mission status
-// @access  Private (collector)
-router.put('/:id/status', authenticateToken, authorize('collector'), MissionController.updateMissionStatus);
+// Update mission status (collector can update their own missions)
+router.patch('/:missionId/status', missionStatusUpdateValidation, handleValidationErrors, MissionController.updateStatus);
+
+// Assign/reassign mission to collector (admin/org_admin only)
+router.patch('/:missionId/assign', missionReassignValidation, handleValidationErrors, MissionController.assignMission);
+
+// Route optimization
+router.post('/optimize-route', routeOptimizationValidation, handleValidationErrors, MissionController.optimizeRoute);
 
 module.exports = router;
