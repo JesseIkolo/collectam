@@ -1,0 +1,450 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+.useCases {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 120px 0;
+  background: #fff;
+}
+
+.container {
+  display: flex;
+  width: 100%;
+  max-width: 1200px;
+  padding: 0 32px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 64px;
+}
+
+.header {
+  display: flex;
+  width: 100%;
+  max-width: 616px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 32px;
+  position: relative;
+}
+
+.decorativeLine {
+  position: absolute;
+  top: -40px;
+  left: -14px;
+  width: 292px;
+  height: 25px;
+}
+
+.decorativeLine svg {
+  width: 100%;
+  height: 100%;
+}
+
+.badge {
+  display: flex;
+  padding: 2px 8px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999px;
+  background: #E0FAEC;
+}
+
+.badge span {
+  color: #1FC16B;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: -0.14px;
+}
+
+.titleSection {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+.title {
+  color: #000;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 45px;
+  font-weight: 500;
+  line-height: 57.6px;
+  letter-spacing: -1px;
+  margin: 0;
+  width: 771px;
+}
+
+.description {
+  color: #525866;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 24px;
+  margin: 0;
+}
+
+.ctaButton {
+  display: flex;
+  padding: 10px 14px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3DD182 0%, #1DAF61 100%);
+  box-shadow: 0 0 0 1px #1DAF61, 0 1px 2px 0 rgba(13, 17, 27, 0.24);
+  border: none;
+  cursor: pointer;
+  color: #FFF;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.18px;
+  position: relative;
+}
+
+.ctaButton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.27);
+  pointer-events: none;
+}
+
+.caseStudy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  width: 100%;
+}
+
+.mainCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 33px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.cardContent {
+  display: flex;
+  height: 475px;
+  padding: 32px;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 600px;
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.cardImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+}
+
+.backgroundImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 16px;
+}
+
+.gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(25, 117, 68, 0.00) 45%, #1A7544 100%);
+}
+
+.cardHeader {
+  display: flex;
+  width: 218px;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.logo {
+  height: 48px;
+  width: 100%;
+  object-fit: contain;
+}
+
+.cardTitle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.cardTitle h3 {
+  color: #FFF;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 37px;
+  font-weight: 500;
+  line-height: 44px;
+  letter-spacing: -1.6px;
+  margin: 0;
+}
+
+.statsSection {
+  display: flex;
+  padding-bottom: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px;
+  min-width: 209px;
+}
+
+.statItem {
+  display: flex;
+  width: 209px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.statValue {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.statSign {
+  color: #1DAF61;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 45px;
+  font-weight: 500;
+  line-height: 57.6px;
+  letter-spacing: -1px;
+  display: inline;
+}
+
+.statNumber {
+  color: #000;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 45px;
+  font-weight: 500;
+  line-height: 57.6px;
+  letter-spacing: -1px;
+  display: inline;
+}
+
+.statLabel {
+  color: #000;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.18px;
+}
+
+.companiesSection {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.companyItem {
+  display: flex;
+  padding: 42px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  position: relative;
+  border-bottom: 1px solid #E1E3E9;
+}
+
+.companyItem.active {
+  border-bottom: 1px solid #1DAF61;
+}
+
+.companyLogo {
+  height: 49px;
+  width: 200px;
+  object-fit: contain;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .useCases {
+    padding: 80px 0;
+  }
+  
+  .container {
+    padding: 0 24px;
+    gap: 48px;
+  }
+  
+  .title {
+    font-size: 36px;
+    line-height: 44px;
+    width: 100%;
+  }
+  
+  .mainCard {
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .cardContent {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .statsSection {
+    flex-direction: row;
+    gap: 20px;
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .statItem {
+    width: auto;
+    min-width: 120px;
+  }
+  
+  .decorativeLine {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .useCases {
+    padding: 60px 0;
+  }
+  
+  .container {
+    padding: 0 16px;
+    gap: 32px;
+  }
+  
+  .header {
+    gap: 24px;
+  }
+  
+  .titleSection {
+    gap: 12px;
+  }
+  
+  .title {
+    font-size: 28px;
+    line-height: 34px;
+  }
+  
+  .description {
+    font-size: 16px;
+    line-height: 22px;
+  }
+  
+  .cardContent {
+    height: 400px;
+    padding: 24px;
+  }
+  
+  .cardTitle h3 {
+    font-size: 28px;
+    line-height: 34px;
+  }
+  
+  .statsSection {
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .statItem {
+    width: 100%;
+  }
+  
+  .statSign,
+  .statNumber {
+    font-size: 36px;
+    line-height: 44px;
+  }
+  
+  .companiesSection {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .companyItem {
+    padding: 24px;
+    width: 100%;
+    border-bottom: none;
+    border-right: none;
+  }
+  
+  .companyItem.active {
+    border-bottom: none;
+    background: rgba(29, 175, 97, 0.05);
+  }
+}
+
+@media (max-width: 480px) {
+  .useCases {
+    padding: 40px 0;
+  }
+  
+  .title {
+    font-size: 24px;
+    line-height: 30px;
+  }
+  
+  .description {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  
+  .cardContent {
+    height: 350px;
+    padding: 20px;
+  }
+  
+  .cardTitle h3 {
+    font-size: 24px;
+    line-height: 30px;
+  }
+  
+  .statSign,
+  .statNumber {
+    font-size: 28px;
+    line-height: 34px;
+  }
+  
+  .statLabel {
+    font-size: 16px;
+  }
+  
+  .ctaButton {
+    width: 100%;
+    max-width: 280px;
+  }
+}

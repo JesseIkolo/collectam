@@ -1,0 +1,605 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+.features {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120px 0;
+  background: #fff;
+  width: 100%;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  padding: 0 32px;
+  gap: 80px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  text-align: center;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 6px 16px;
+  align-items: center;
+  border-radius: 20px;
+  background: rgba(29, 175, 97, 0.1);
+  color: #1DAF61;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.14px;
+}
+
+.title {
+  color: #000;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 56px;
+  letter-spacing: -1px;
+  margin: 0;
+}
+
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 40px;
+  width: 100%;
+}
+
+.featureCard {
+  display: flex;
+  gap: 40px;
+  padding: 40px;
+  border-radius: 24px;
+  background: #FAFBFC;
+  border: 1px solid #E1E4EA;
+  min-height: 400px;
+}
+
+.featureContent {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+.featureHeader {
+  display: flex;
+  align-items: flex-start;
+}
+
+.featureIcon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(29, 175, 97, 0.1);
+}
+
+.featureIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.featureIcon span {
+  color: #1DAF61;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.14px;
+}
+
+.featureTitle {
+  color: #000;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 34px;
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.featureDescription {
+  color: rgba(0, 0, 0, 0.7);
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  margin: 0;
+}
+
+.featureVisual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 300px;
+}
+
+/* Fields Feature Styles */
+.fieldCard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1DAF61 0%, #3DD182 100%);
+  color: white;
+  width: 280px;
+  position: relative;
+}
+
+.fieldHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldTitle {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+}
+
+.fieldSubtitle {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.fieldStats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fieldStat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statLabel {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.statValue {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
+}
+
+.fieldProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.progressBar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  width: 70%;
+  background: white;
+  border-radius: 4px;
+}
+
+.progressText {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+  text-align: center;
+}
+
+/* Tasks Feature Styles */
+.tasksPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.taskColumns {
+  display: flex;
+  gap: 20px;
+}
+
+.taskColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  padding: 16px;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid #E1E4EA;
+}
+
+.columnHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.columnTitle {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #000;
+}
+
+.taskCount {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #E1E4EA;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #525866;
+}
+
+.taskItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #FAFBFC;
+  border: 1px solid #E1E4EA;
+}
+
+.taskText {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #000;
+  line-height: 18px;
+}
+
+.taskMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.taskPriority {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: #1DAF61;
+}
+
+.taskDate {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: #525866;
+}
+
+/* Weather Feature Styles */
+.weatherPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.weatherCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid #E1E4EA;
+}
+
+.weatherHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.weatherTitle {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #000;
+}
+
+.seeAll {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: #525866;
+  cursor: pointer;
+}
+
+.windSpeed {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.windValue {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 32px;
+  font-weight: 600;
+  color: #1DAF61;
+}
+
+.windUnit {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #525866;
+}
+
+.weatherToday,
+.weatherTomorrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.weatherIcon {
+  font-size: 24px;
+}
+
+.temperature {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #000;
+}
+
+.uvIndex {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid #E1E4EA;
+}
+
+.uvTitle {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #000;
+}
+
+.uvValue {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: #000;
+}
+
+.uvLevel {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #525866;
+}
+
+/* Energy Feature Styles */
+.energyPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.energyCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid #E1E4EA;
+}
+
+.energyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.energyTitle {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #000;
+}
+
+.energyValue {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.energyNumber {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: #000;
+}
+
+.energyChange {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1DAF61;
+}
+
+.solarPanel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3DD182 0%, #1DAF61 100%);
+  color: white;
+}
+
+.solarIcon {
+  font-size: 20px;
+}
+
+.solarValue {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+}
+
+.energyStorage {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid #E1E4EA;
+}
+
+.storageTitle {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1DAF61;
+}
+
+.storageValue {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #000;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .container {
+    padding: 0 24px;
+    gap: 60px;
+  }
+  
+  .featuresGrid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  
+  .featureCard {
+    flex-direction: column;
+    gap: 24px;
+    padding: 32px;
+    min-height: auto;
+  }
+  
+  .featureVisual {
+    min-width: auto;
+  }
+  
+  .title {
+    font-size: 40px;
+    line-height: 48px;
+  }
+}
+
+@media (max-width: 768px) {
+  .features {
+    padding: 80px 0;
+  }
+  
+  .container {
+    padding: 0 16px;
+    gap: 48px;
+  }
+  
+  .title {
+    font-size: 32px;
+    line-height: 40px;
+  }
+  
+  .featureCard {
+    padding: 24px;
+    gap: 20px;
+  }
+  
+  .featureTitle {
+    font-size: 24px;
+    line-height: 30px;
+  }
+  
+  .taskColumns {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .fieldCard {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .features {
+    padding: 60px 0;
+  }
+  
+  .title {
+    font-size: 28px;
+    line-height: 34px;
+  }
+  
+  .featureTitle {
+    font-size: 20px;
+    line-height: 26px;
+  }
+  
+  .featureDescription {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  
+  .featureCard {
+    padding: 20px;
+  }
+}

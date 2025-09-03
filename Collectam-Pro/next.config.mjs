@@ -3,6 +3,10 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
+  // Ensure Turbopack uses this app directory as the workspace root
+  turbopack: {
+    root: __dirname,
+  },
   async redirects() {
     return [
       {

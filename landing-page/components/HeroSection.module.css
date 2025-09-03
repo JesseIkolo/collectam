@@ -1,0 +1,421 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 53px;
+  width: 100%;
+  background: #fff;
+  min-height: 100vh;
+}
+
+.container {
+  display: flex;
+  width: 100%;
+  max-width: 1200px;
+  padding: 120px 32px 32px 32px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.headingSection {
+  width: 100%;
+  max-width: 645px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 60px;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 4px 14px;
+  align-items: center;
+  gap: 8px;
+  border-radius: 11px;
+  background: rgba(247, 255, 251, 0.35);
+  mix-blend-mode: multiply;
+  margin-bottom: 68px;
+}
+
+.backedBy {
+  color: #1DAF61;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: -0.14px;
+}
+
+.gCombinator {
+  display: flex;
+  padding: 2px 7px;
+  align-items: center;
+  border-radius: 4px;
+  background: #1DAF61;
+}
+
+.gLetter {
+  color: #FFF;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.16px;
+}
+
+.combinator {
+  color: #1DAF61;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: -0.14px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 60px;
+  width: 100%;
+}
+
+.titleSection {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.decorativeElements {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 400px;
+  justify-content: space-between;
+}
+
+.decorativeLeft {
+  position: absolute;
+  left: -150px;
+  top: 10px;
+  width: 288px;
+  height: 27px;
+}
+
+.decorativeIcons {
+  position: absolute;
+  right: -150px;
+  top: -20px;
+  display: flex;
+  gap: 20px;
+}
+
+.decorativeIcons svg {
+  width: 73px;
+  height: 73px;
+}
+
+.title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.titleText {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.titleLine1 {
+  color: #000;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 53px;
+  font-weight: 500;
+  line-height: 61.6px;
+  letter-spacing: -1px;
+  display: block;
+}
+
+.titleLine2 {
+  color: #000;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 52px;
+  font-weight: 500;
+  line-height: 61.6px;
+  letter-spacing: -1px;
+  display: block;
+}
+
+.subtitle {
+  opacity: 0.254;
+  text-align: center;
+}
+
+.subtitleText {
+  color: #000;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 24px;
+  margin: 0;
+}
+
+.buttonGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.primaryButton {
+  display: flex;
+  padding: 10px 14px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3DD182 0%, #1DAF61 100%);
+  box-shadow: 0 0 0 1px #1DAF61, 0 1px 2px 0 rgba(13, 17, 27, 0.24);
+  border: none;
+  cursor: pointer;
+  color: #FFF;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.18px;
+  position: relative;
+}
+
+.primaryButton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.27);
+  pointer-events: none;
+}
+
+.secondaryButton {
+  display: flex;
+  padding: 10px 14px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  background: #FFF;
+  box-shadow: 0 0 0 1px #E1E3E9, 0 1px 3px 0 rgba(13, 17, 27, 0.12);
+  border: 1px solid #E1E4EA;
+  cursor: pointer;
+  color: #525866;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.18px;
+}
+
+.heroSlider {
+  display: flex;
+  width: 100%;
+  max-width: 1200px;
+  padding: 22px 32px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+}
+
+.tabMenu {
+  display: flex;
+  padding: 8px 14px;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  border-radius: 10px;
+  background: #FFF;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tabItem {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.tabItem span {
+  color: #525866;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: -0.14px;
+}
+
+.tabItem.active span {
+  color: #000;
+}
+
+.tabItem svg {
+  width: 20px;
+  height: 20px;
+}
+
+.tabIndicator {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: -16px;
+}
+
+.dashboardPreview {
+  display: flex;
+  padding: 16px 14px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  border-radius: 30px;
+  background: rgba(253, 242, 222, 0.39);
+  backdrop-filter: blur(7.5px);
+  border: 1px solid #E1E3E9;
+}
+
+.dashboardImage {
+  width: 100%;
+  max-width: 1108px;
+  height: auto;
+  border-radius: 30px;
+  display: block;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .container {
+    padding: 80px 24px 24px 24px;
+  }
+  
+  .titleLine1,
+  .titleLine2 {
+    font-size: 42px;
+    line-height: 50px;
+  }
+  
+  .decorativeLeft,
+  .decorativeIcons {
+    display: none;
+  }
+  
+  .heroSlider {
+    padding: 16px 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    gap: 32px;
+  }
+  
+  .container {
+    padding: 60px 16px 16px 16px;
+  }
+  
+  .headingSection {
+    max-width: 100%;
+    gap: 40px;
+  }
+  
+  .titleLine1,
+  .titleLine2 {
+    font-size: 32px;
+    line-height: 38px;
+  }
+  
+  .subtitleText {
+    font-size: 16px;
+    line-height: 22px;
+  }
+  
+  .buttonGroup {
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+  
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+    max-width: 280px;
+  }
+  
+  .tabMenu {
+    padding: 6px 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  
+  .tabItem {
+    padding: 6px 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .tabItem span {
+    font-size: 12px;
+    display: none;
+  }
+  
+  .heroSlider {
+    padding: 12px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .titleLine1,
+  .titleLine2 {
+    font-size: 28px;
+    line-height: 34px;
+  }
+  
+  .badge {
+    padding: 3px 10px;
+    gap: 6px;
+  }
+  
+  .backedBy,
+  .combinator {
+    font-size: 12px;
+  }
+  
+  .gLetter {
+    font-size: 14px;
+  }
+}
