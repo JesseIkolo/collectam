@@ -115,6 +115,75 @@
   pointer-events: none;
 }
 
+.buttonGroup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.signupButton {
+  display: flex;
+  padding: 10px 14px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3DD182 0%, #1DAF61 100%);
+  box-shadow: 0 0 0 1px #1DAF61, 0 1px 2px 0 rgba(13, 17, 27, 0.24);
+  border: none;
+  cursor: pointer;
+  color: #FFF;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.18px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.signupButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(13,17,27,0.12);
+}
+
+.signupButton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.27);
+  pointer-events: none;
+}
+
+.loginButton {
+  display: flex;
+  padding: 10px 14px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  background: #FFF;
+  box-shadow: 0 0 0 1px #E1E3E9, 0 1px 3px 0 rgba(13, 17, 27, 0.12);
+  border: 1px solid #E1E4EA;
+  cursor: pointer;
+  color: #525866;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.18px;
+  transition: all 0.2s ease;
+}
+
+.loginButton:hover {
+  border-color: #1DAF61;
+  color: #1DAF61;
+}
+
 .dashboardShowcase {
   display: flex;
   height: 487px;

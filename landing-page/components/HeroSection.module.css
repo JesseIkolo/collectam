@@ -317,6 +317,22 @@
   display: block;
 }
 
+.coloredFrame {
+  width: 100%;
+  max-width: 1108px;
+  height: 400px;
+  border-radius: 30px;
+  display: block;
+}
+
+.tabItem:hover {
+  background-color: rgba(29, 175, 97, 0.1);
+}
+
+.tabItem:hover span {
+  color: #1DAF61;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .container {

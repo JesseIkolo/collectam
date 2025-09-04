@@ -60,18 +60,18 @@
 
 .featureCard {
   display: flex;
-  gap: 40px;
-  padding: 40px;
-  border-radius: 24px;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 12px;
   background: #FAFBFC;
   border: 1px solid #E1E4EA;
-  min-height: 400px;
+  min-height: 150px;
 }
 
 .featureContent {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
   flex: 1;
 }
 
@@ -105,19 +105,19 @@
 .featureTitle {
   color: #000;
   font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
-  font-size: 28px;
+  font-size: 18px;
   font-weight: 600;
-  line-height: 34px;
-  letter-spacing: -0.5px;
+  line-height: 22px;
+  letter-spacing: -0.3px;
   margin: 0;
 }
 
 .featureDescription {
   color: rgba(0, 0, 0, 0.7);
   font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 24px;
+  line-height: 18px;
   margin: 0;
 }
 

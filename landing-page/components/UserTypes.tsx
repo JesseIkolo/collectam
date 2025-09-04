@@ -9,11 +9,7 @@ const UserTypes: React.FC = () => {
                 <div className={`${styles.card} ${styles.orangeCard}`}>
                     <div className={styles.cardContent}>
                         <div className={styles.imageContainer}>
-                            <img 
-                                src="https://api.builder.io/api/v1/image/assets/TEMP/561198044c7144bae1091366f1330a3aae1fc7f4?width=960"
-                                alt="Homepage Feature Card Automations Services"
-                                className={styles.cardImage}
-                            />
+                            <div className={styles.cardImage} style={{ backgroundColor: '#22c55e' }}></div>
                         </div>
                         <h3 className={styles.cardTitle}>
                             Convertir avec des e-mail et SMS
@@ -42,11 +38,7 @@ const UserTypes: React.FC = () => {
                 <div className={`${styles.card} ${styles.lightOrangeCard}`}>
                     <div className={styles.cardContent}>
                         <div className={styles.imageContainer}>
-                            <img 
-                                src="https://api.builder.io/api/v1/image/assets/TEMP/0b288476f392ceda9d8e41465a5d1d540b2bf34b?width=960"
-                                alt="Content Creation Template"
-                                className={styles.cardImage}
-                            />
+                            <div className={styles.cardImage} style={{ backgroundColor: '#3b82f6' }}></div>
                         </div>
                         <h3 className={styles.cardTitle}>
                             Créer du contenu pertinent plus<br />
@@ -75,11 +67,7 @@ const UserTypes: React.FC = () => {
                 <div className={`${styles.card} ${styles.greyCard}`}>
                     <div className={styles.cardContent}>
                         <div className={styles.imageContainer}>
-                            <img 
-                                src="https://api.builder.io/api/v1/image/assets/TEMP/af4fef7253a0d1eb540620afce40a5bc1b16766a?width=960"
-                                alt="Email Builder Create Content"
-                                className={styles.cardImage}
-                            />
+                            <div className={styles.cardImage} style={{ backgroundColor: '#ef4444' }}></div>
                         </div>
                         <h3 className={styles.cardTitle}>
                             Établir des relations durables avec<br />
@@ -110,11 +98,7 @@ const UserTypes: React.FC = () => {
                 <div className={`${styles.card} ${styles.greyCard}`}>
                     <div className={styles.cardContent}>
                         <div className={styles.imageContainer}>
-                            <img 
-                                src="https://api.builder.io/api/v1/image/assets/TEMP/f2eaa61d0ff18838c75c6f575344ea5e81d686db?width=960"
-                                alt="Mailchimp Metrics Visualizer"
-                                className={styles.cardImage}
-                            />
+                            <div className={styles.cardImage} style={{ backgroundColor: '#8b5cf6' }}></div>
                         </div>
                         <h3 className={styles.cardTitle}>
                             Optimiser avec des analyses et des<br />

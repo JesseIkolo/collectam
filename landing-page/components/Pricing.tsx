@@ -71,7 +71,7 @@ const Pricing: React.FC = () => {
                                 <div className={styles.planHeader}>
                                     <h3 className={styles.planType}>Basic</h3>
                                     <div className={styles.priceSection}>
-                                        <span className={styles.price}>$109</span>
+                                        <span className={styles.price}>{isYearly ? '$109' : '$129'}</span>
                                         <div className={styles.discountBadge}>
                                             <span>30% OFF</span>
                                         </div>
@@ -123,7 +123,7 @@ const Pricing: React.FC = () => {
                                 <div className={styles.planHeader}>
                                     <h3 className={styles.planType}>Pro</h3>
                                     <div className={styles.priceSection}>
-                                        <span className={styles.price}>$210</span>
+                                        <span className={styles.price}>{isYearly ? '$210' : '$250'}</span>
                                         <div className={styles.discountBadge}>
                                             <span>30% OFF</span>
                                         </div>
@@ -175,7 +175,7 @@ const Pricing: React.FC = () => {
                                 <div className={styles.planHeader}>
                                     <h3 className={styles.planType}>Enterprise</h3>
                                     <div className={styles.priceSection}>
-                                        <span className={styles.price}>$268</span>
+                                        <span className={styles.price}>{isYearly ? '$268' : '$320'}</span>
                                         <div className={styles.discountBadge}>
                                             <span>30% OFF</span>
                                         </div>

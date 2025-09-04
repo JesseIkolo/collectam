@@ -39,16 +39,12 @@ const Benefits: React.FC = () => {
                         </div>
                         
                         <button className={styles.ctaButton}>
-                            Get Template
+                            S'inscrire maintenant
                         </button>
                     </div>
                     
                     <div className={styles.dashboardPreview}>
-                        <img 
-                            src="https://api.builder.io/api/v1/image/assets/TEMP/cfec546a4688e61258a631af41349c8924833259?width=2272"
-                            alt="Dashboard"
-                            className={styles.dashboardImage}
-                        />
+                        <div className={styles.greenFrame}></div>
                     </div>
                 </div>
             </div>

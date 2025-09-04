@@ -1,26 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styles from './HeroSection.module.css';
 
 const HeroSection: React.FC = () => {
+    const [activeTab, setActiveTab] = useState('home');
+
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case 'home':
+                return <div className={styles.coloredFrame} style={{ backgroundColor: '#22c55e' }}></div>;
+            case 'fields':
+                return <div className={styles.coloredFrame} style={{ backgroundColor: '#ef4444' }}></div>;
+            case 'tasks':
+                return <div className={styles.coloredFrame} style={{ backgroundColor: '#3b82f6' }}></div>;
+            default:
+                return <div className={styles.coloredFrame} style={{ backgroundColor: '#22c55e' }}></div>;
+        }
+    };
+
     return (
         <div className={styles.hero}>
             <div className={styles.container}>
                 <div className={styles.headingSection}>
-                    <div className={styles.badge}>
-                        <span className={styles.backedBy}>Backed by</span>
-                        <div className={styles.gCombinator}>
-                            <span className={styles.gLetter}>G</span>
-                        </div>
-                        <span className={styles.combinator}>Combinator</span>
-                    </div>
                     
                     <div className={styles.content}>
                         <div className={styles.titleSection}>
                             <div className={styles.decorativeElements}>
-                                <svg className={styles.decorativeLeft} width="288" height="27" viewBox="0 0 288 27" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M7.97232 9.70386H213.924L67.1 17.6762H280.028" stroke="#3BB976" strokeOpacity="0.35" strokeWidth="15.9446" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 1"/>
-                                </svg>
-                                
                                 <div className={styles.decorativeIcons}>
                                     <svg width="73" height="74" viewBox="0 0 73 74" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M33.076 67.033C30.518 68.006 27.997 68.991 25.412 69.888C24.857 70.083 24.254 69.792 24.062 69.24C23.866 68.684 24.16 68.078 24.713 67.886C27.282 66.991 29.783 66.016 32.323 65.049C32.872 64.842 33.484 65.118 33.691 65.662C33.899 66.211 33.626 66.826 33.076 67.033Z" fill="#1FC16B"/>
@@ -38,8 +42,8 @@ const HeroSection: React.FC = () => {
                             
                             <div className={styles.title}>
                                 <h1 className={styles.titleText}>
-                                    <span className={styles.titleLine1}>Sustainability isn't more</span>
-                                    <span className={styles.titleLine2}>an option, be regenerative</span>
+                                    <span className={styles.titleLine1}>Optimisons la collecte </span>
+                                    <span className={styles.titleLine2}>des dechets,avec Collectam</span>
                                 </h1>
                             </div>
                         </div>
@@ -55,10 +59,10 @@ const HeroSection: React.FC = () => {
                     
                     <div className={styles.buttonGroup}>
                         <button className={styles.primaryButton}>
-                            Get Template
+                            S'inscrire Maintenant
                         </button>
                         <button className={styles.secondaryButton}>
-                            Explore Cases
+                            Se Connecter
                         </button>
                     </div>
                 </div>
@@ -66,39 +70,34 @@ const HeroSection: React.FC = () => {
             
             <div className={styles.heroSlider}>
                 <div className={styles.tabMenu}>
-                    <div className={styles.tabItem + ' ' + styles.active}>
+                    <div 
+                        className={`${styles.tabItem} ${activeTab === 'home' ? styles.active : ''}`}
+                        onClick={() => setActiveTab('home')}
+                    >
                         <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M14.5 14.95C14.5 15.149 14.421 15.34 14.28 15.48C14.14 15.621 13.949 15.7 13.75 15.7H3.25C3.051 15.7 2.86 15.621 2.72 15.48C2.579 15.34 2.5 15.149 2.5 14.95V8.19999H0.25L7.995 1.15899C8.133 1.03299 8.313 0.963989 8.5 0.963989C8.687 0.963989 8.867 1.03299 9.005 1.15899L16.75 8.19999H14.5V14.95ZM5.5 11.2V12.7H11.5V11.2H5.5Z" fill="#1DAF61"/>
+                            <path d="M14.5 14.95C14.5 15.149 14.421 15.34 14.28 15.48C14.14 15.621 13.949 15.7 13.75 15.7H3.25C3.051 15.7 2.86 15.621 2.72 15.48C2.579 15.34 2.5 15.149 2.5 14.95V8.19999H0.25L7.995 1.15899C8.133 1.03299 8.313 0.963989 8.5 0.963989C8.687 0.963989 8.867 1.03299 9.005 1.15899L16.75 8.19999H14.5V14.95ZM5.5 11.2V12.7H11.5V11.2H5.5Z" fill={activeTab === 'home' ? "#1DAF61" : "#525866"}/>
                         </svg>
                         <span>Home</span>
                     </div>
                     
-                    <div className={styles.tabItem}>
+                    <div 
+                        className={`${styles.tabItem} ${activeTab === 'fields' ? styles.active : ''}`}
+                        onClick={() => setActiveTab('fields')}
+                    >
                         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M15 6.44901V13.95C15 14.149 14.921 14.34 14.78 14.48C14.64 14.621 14.449 14.7 14.25 14.7H8.25V6.44901H15ZM6.75 10.949V14.7H0.75C0.551 14.7 0.36 14.621 0.22 14.48C0.079 14.34 0 14.149 0 13.95V10.949H6.75ZM6.75 1.20001V9.44901H0V1.95001C0 1.75101 0.079 1.56001 0.22 1.42001C0.36 1.27901 0.551 1.20001 0.75 1.20001H6.75ZM14.25 1.20001C14.449 1.20001 14.64 1.27901 14.78 1.42001C14.921 1.56001 15 1.75101 15 1.95001V4.94901H8.25V1.20001H14.25Z" fill="#525866"/>
+                            <path d="M15 6.44901V13.95C15 14.149 14.921 14.34 14.78 14.48C14.64 14.621 14.449 14.7 14.25 14.7H8.25V6.44901H15ZM6.75 10.949V14.7H0.75C0.551 14.7 0.36 14.621 0.22 14.48C0.079 14.34 0 14.149 0 13.95V10.949H6.75ZM6.75 1.20001V9.44901H0V1.95001C0 1.75101 0.079 1.56001 0.22 1.42001C0.36 1.27901 0.551 1.20001 0.75 1.20001H6.75ZM14.25 1.20001C14.449 1.20001 14.64 1.27901 14.78 1.42001C14.921 1.56001 15 1.75101 15 1.95001V4.94901H8.25V1.20001H14.25Z" fill={activeTab === 'fields' ? "#1DAF61" : "#525866"}/>
                         </svg>
                         <span>Fields</span>
                     </div>
                     
-                    <div className={styles.tabItem}>
+                    <div 
+                        className={`${styles.tabItem} ${activeTab === 'tasks' ? styles.active : ''}`}
+                        onClick={() => setActiveTab('tasks')}
+                    >
                         <svg width="15" height="17" viewBox="0 0 15 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M14.25 2.19401V15.706C14.248 15.903 14.169 16.091 14.03 16.231C13.891 16.37 13.702 16.449 13.505 16.45H1.495C1.297 16.45 1.108 16.372 0.968 16.232C0.829 16.093 0.75 15.903 0.75 15.706V2.19401C0.752 1.99701 0.831 1.80901 0.97 1.66901C1.109 1.53001 1.298 1.45101 1.495 1.45001H13.505C13.916 1.45001 14.25 1.78301 14.25 2.19401ZM6.97 9.79101L5.113 7.93401L4.053 8.99601L6.97 11.912L11.212 7.67001L10.152 6.60901L6.97 9.79101Z" fill="#525866"/>
+                            <path d="M14.25 2.19401V15.706C14.248 15.903 14.169 16.091 14.03 16.231C13.891 16.37 13.702 16.449 13.505 16.45H1.495C1.297 16.45 1.108 16.372 0.968 16.232C0.829 16.093 0.75 15.903 0.75 15.706V2.19401C0.752 1.99701 0.831 1.80901 0.97 1.66901C1.109 1.53001 1.298 1.45101 1.495 1.45001H13.505C13.916 1.45001 14.25 1.78301 14.25 2.19401ZM6.97 9.79101L5.113 7.93401L4.053 8.99601L6.97 11.912L11.212 7.67001L10.152 6.60901L6.97 9.79101Z" fill={activeTab === 'tasks' ? "#1DAF61" : "#525866"}/>
                         </svg>
                         <span>Tasks</span>
-                    </div>
-                    
-                    <div className={styles.tabItem}>
-                        <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.98799 3.74499C7.29199 3.16599 7.70999 2.65299 8.21599 2.23899C8.72299 1.82399 9.30799 1.51599 9.93599 1.33199C10.564 1.14899 11.223 1.09299 11.873 1.16999C12.523 1.24599 13.151 1.45199 13.719 1.77599C14.288 2.10099 14.785 2.53599 15.182 3.05699C15.578 3.57699 15.866 4.17199 16.028 4.80599C16.19 5.44099 16.222 6.10099 16.123 6.74799C16.024 7.39499 15.796 8.01499 15.453 8.57199C16.054 9.13799 16.472 9.873 16.651 10.679C16.831 11.486 16.764 12.328 16.459 13.096C16.154 13.864 15.626 14.523 14.942 14.987C14.259 15.452 13.451 15.7 12.625 15.7L6.24999 15.699C5.43099 15.699 4.62099 15.53 3.86999 15.205C3.11899 14.88 2.44199 14.404 1.88199 13.807C1.32099 13.211 0.888993 12.506 0.610993 11.736C0.332993 10.965 0.215993 10.147 0.265993 9.33C0.315993 8.512 0.533993 7.71399 0.903993 6.98399C1.27399 6.25399 1.78999 5.60799 2.41999 5.08399C3.04999 4.56099 3.77999 4.17199 4.56499 3.94199C5.35099 3.71099 6.17499 3.64399 6.98799 3.74399V3.74499ZM8.54099 4.15299C9.28999 4.46299 9.96899 4.92199 10.537 5.50099C11.104 6.08099 11.549 6.76899 11.844 7.52399C12.629 7.37399 13.442 7.45399 14.184 7.75399C14.531 7.01299 14.597 6.16899 14.369 5.38299C14.141 4.59599 13.634 3.91799 12.944 3.47799C12.253 3.03699 11.425 2.86199 10.616 2.98599C9.80599 3.11099 9.06799 3.52499 8.54099 4.15299Z" fill="#525866"/>
-                        </svg>
-                        <span>Weather</span>
-                    </div>
-                    
-                    <div className={styles.tabItem}>
-                        <svg width="13" height="19" viewBox="0 0 13 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M7.25 8.45001H12.5L5.75 18.2V11.45H0.5L7.25 1.70001V8.45001Z" fill="#525866"/>
-                        </svg>
-                        <span>Energy</span>
                     </div>
                 </div>
                 
@@ -109,11 +108,7 @@ const HeroSection: React.FC = () => {
                 </div>
                 
                 <div className={styles.dashboardPreview}>
-                    <img 
-                        src="https://api.builder.io/api/v1/image/assets/TEMP/dec6306d3e1771ca9ebf76216e79e8be3b6d6935?width=2216" 
-                        alt="Dashboard Preview" 
-                        className={styles.dashboardImage}
-                    />
+                    {renderTabContent()}
                 </div>
             </div>
         </div>
