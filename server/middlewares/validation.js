@@ -4,16 +4,23 @@ const E164_REGEX = /^\+?[1-9]\d{6,14}$/; // General E.164 pattern
 // User validation rules
 const userSignupValidation = [
   body('invitationToken')
-    .notEmpty()
-    .withMessage('Invitation token is required'),
+    .optional()
+    .custom((value) => {
+      // Allow empty string or undefined
+      if (!value || value.trim() === '') {
+        return true;
+      }
+      // If provided, it should be a non-empty string
+      return value.length > 0;
+    })
+    .withMessage('Invalid invitation token format'),
   body('email')
     .isEmail()
     .normalizeEmail()
     .withMessage('Valid email is required'),
   body('password')
     .isLength({ min: 8 })
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
-    .withMessage('Password must be at least 8 characters with uppercase, lowercase, number and special character'),
+    .withMessage('Password must be at least 8 characters'),
   body('firstName')
     .notEmpty()
     .trim()

@@ -20,13 +20,13 @@ const Footer: React.FC = () => {
                             <div className={styles.logo}>
                                 <div className={styles.logoIcon}></div>
                             </div>
-                            <h3 className={styles.brandName}>Flora™</h3>
+                            <h3 className={styles.brandName}>Collectam™</h3>
                         </div>
                         
                         <blockquote className={styles.quote}>
-                            "The Lord God took the man and<br />
-                            put him in the Garden of Eden to<br />
-                            work it and take care of it."
+                            "Transformons ensemble la gestion<br />
+                            des déchets pour un avenir<br />
+                            plus durable et responsable."
                         </blockquote>
                         
                         <div className={styles.socialLinks}>
@@ -88,40 +88,28 @@ const Footer: React.FC = () => {
                         <div className={styles.linkColumn}>
                             <h4 className={styles.columnTitle}>HOME</h4>
                             <ul className={styles.linksList}>
-                                <li><a href="#features">Features</a></li>
-                                <li><a href="#benefits">Benefits</a></li>
-                                <li><a href="#integrations">Integrations</a></li>
-                                <li><a href="#use-cases">Use Cases</a></li>
-                                <li><a href="#pricing">Pricing</a></li>
-                                <li><a href="#blog">Blog</a></li>
+                                <li><a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Features</a></li>
+                                <li><a href="#usertypes" onClick={(e) => { e.preventDefault(); document.getElementById('usertypes')?.scrollIntoView({ behavior: 'smooth' }); }}>Types d'utilisateurs</a></li>
+                                <li><a href="#pricing" onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }}>Pricing</a></li>
                             </ul>
                         </div>
                         
-                        <div className={styles.linkColumn}>
-                            <h4 className={styles.columnTitle}>USE CASES</h4>
-                            <ul className={styles.linksList}>
-                                <li><a href="#biosyntesix">Biosyntesix™</a></li>
-                                <li><a href="#quotient">Quotient™</a></li>
-                                <li><a href="#hourglass">Hourglass™</a></li>
-                                <li><a href="#globalbank">GlobalBank™</a></li>
-                            </ul>
-                        </div>
                         
                         <div className={styles.linkColumn}>
                             <h4 className={styles.columnTitle}>ABOUT US</h4>
                             <ul className={styles.linksList}>
-                                <li><a href="#team">Team</a></li>
-                                <li><a href="#jobs">Jobs</a></li>
-                                <li><a href="#sdgs">ONU® SDGs</a></li>
+                                <li><a href="/about#team">Team</a></li>
+                                <li><a href="/about#jobs">Jobs</a></li>
+                                <li><a href="/about#mission">Notre Mission</a></li>
                             </ul>
                         </div>
                         
                         <div className={styles.linkColumn}>
                             <h4 className={styles.columnTitle}>CONTACT US</h4>
                             <ul className={styles.linksList}>
-                                <li><a href="#contact">Contact Us</a></li>
-                                <li><a href="#offices">Visit our offices</a></li>
-                                <li><a href="#support">Support</a></li>
+                                <li><a href="/contact">Contact Us</a></li>
+                                <li><a href="/contact#offices">Nos Bureaux</a></li>
+                                <li><a href="/contact#support">Support</a></li>
                             </ul>
                         </div>
                         
@@ -138,10 +126,10 @@ const Footer: React.FC = () => {
                 
                 <div className={styles.bottomSection}>
                     <div className={styles.copyright}>
-                        Flora Agrotech © 2025. All Rights Reserved
+                        Collectam © 2025. Tous droits réservés
                     </div>
                     <div className={styles.credits}>
-                        <a href="#" className={styles.creditsLink}>Made by Mainnet Design</a>
+                        <a href="#" className={styles.creditsLink}>Développé avec ❤️ pour l'environnement</a>
                     </div>
                 </div>
             </div>

@@ -1,32 +1,35 @@
 import React from 'react';
+import { useRouter } from 'next/router';
 import styles from './DemoTrial.module.css';
 
 const DemoTrial: React.FC = () => {
+    const router = useRouter();
+
+    const handleWaitlistClick = () => {
+        router.push('/contact#waitlist');
+    };
+
     return (
         <div className={styles.demoTrial}>
             <div className={styles.container}>
                 <div className={styles.header}>
                     <div className={styles.titleSection}>
                         <h2 className={styles.title}>
-                            <span className={styles.titleLine1}>Stay Updated with the Future</span>
-                            <span className={styles.titleLine2}>of Farming</span>
+                            <span className={styles.titleLine1}>Prêt à révolutionner</span>
+                            <span className={styles.titleLine2}>votre gestion des déchets ?</span>
                         </h2>
                         
                         <div className={styles.description}>
                             <p>
-                                No spam, just the latest agro-tech trends, sustainability<br />
-                                insights, and interviews with industry leaders delivered<br />
-                                straight to your inbox.
+                                Rejoignez des milliers d'organisations qui transforment<br />
+                                leur gestion des déchets avec Collectam.
                             </p>
                         </div>
                     </div>
                     
                     <div className={styles.buttonGroup}>
-                        <button className={styles.signupButton}>
-                            S'inscrire maintenant
-                        </button>
-                        <button className={styles.loginButton}>
-                            Se connecter
+                        <button className={styles.signupButton} onClick={handleWaitlistClick}>
+                            Rejoindre la waitinglist
                         </button>
                     </div>
                 </div>

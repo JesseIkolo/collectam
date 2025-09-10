@@ -18,7 +18,7 @@ const Pricing: React.FC = () => {
     );
 
     return (
-        <div className={styles.pricing}>
+        <div id="pricing" className={styles.pricing}>
             <div className={styles.container}>
                 <div className={styles.header}>
                     <div className={styles.decorativeLine}>

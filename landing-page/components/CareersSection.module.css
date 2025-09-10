@@ -1,0 +1,459 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+.careersSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 120px 0;
+  background: #fff;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 1200px;
+  padding: 32px;
+  gap: 64px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 600px;
+  gap: 32px;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999px;
+  background: #E0FAEC;
+}
+
+.badge span {
+  color: #1FC16B;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: -0.14px;
+}
+
+.headingContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+.title {
+  color: #000;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 45px;
+  font-weight: 500;
+  line-height: 57.6px;
+  letter-spacing: -1px;
+  margin: 0;
+  width: 100%;
+}
+
+.description {
+  color: #525866;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 24px;
+  margin: 0;
+  width: 100%;
+}
+
+.divider {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  height: 3px;
+}
+
+.divider svg {
+  width: 100%;
+  max-width: 1136px;
+  height: 3px;
+}
+
+.departmentSection {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  gap: 32px;
+}
+
+.departmentInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 300px;
+  gap: 8px;
+}
+
+.departmentTitle {
+  color: #000;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 33.6px;
+  letter-spacing: -0.96px;
+  margin: 0;
+}
+
+.departmentDescription {
+  color: #525866;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  margin: 0;
+}
+
+.jobsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.jobCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 31px;
+  padding: 24px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #E0FAEC;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.jobCard:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.jobHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.jobTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  align-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.jobTitle {
+  color: #000;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.18px;
+  margin: 0;
+  flex: 1;
+}
+
+.badges {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.departmentBadge {
+  display: flex;
+  padding: 2px 8px 2px 2px;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  border-radius: 999px;
+  background: #E0FAEC;
+}
+
+.dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 4px;
+  background: #1FC16B;
+  margin: 6px;
+}
+
+.departmentBadge span {
+  color: #1FC16B;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: -0.14px;
+}
+
+.locationBadge {
+  display: flex;
+  padding: 2px 8px 2px 4px;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  border-radius: 999px;
+  background: #E1E3E9;
+}
+
+.locationBadge span {
+  color: #525866;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: -0.14px;
+}
+
+.locationBadge svg {
+  width: 12px;
+  height: 12px;
+  fill: #525866;
+}
+
+.jobDescription {
+  color: #525866;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  margin: 0;
+  width: 100%;
+}
+
+.jobDetails {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+}
+
+.jobDetail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jobDetail svg {
+  width: 16px;
+  height: 16px;
+  fill: #525866;
+}
+
+.jobDetail span {
+  color: #525866;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 25.6px;
+  letter-spacing: -0.32px;
+}
+
+.officeImage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  border-radius: 13px;
+  overflow: hidden;
+}
+
+.image {
+  width: 100%;
+  max-width: 1136px;
+  height: 400px;
+  object-fit: cover;
+  border-radius: 13px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .careersSection {
+    padding: 80px 0;
+  }
+  
+  .container {
+    padding: 24px;
+    gap: 48px;
+  }
+  
+  .title {
+    font-size: 36px;
+    line-height: 44px;
+  }
+  
+  .departmentSection {
+    gap: 24px;
+  }
+  
+  .jobsGrid {
+    gap: 20px;
+  }
+  
+  .image {
+    height: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .careersSection {
+    padding: 60px 0;
+  }
+  
+  .container {
+    padding: 16px;
+    gap: 32px;
+  }
+  
+  .header {
+    gap: 24px;
+  }
+  
+  .headingContent {
+    gap: 12px;
+  }
+  
+  .title {
+    font-size: 28px;
+    line-height: 34px;
+  }
+  
+  .description {
+    font-size: 16px;
+    line-height: 22px;
+  }
+  
+  .departmentTitle {
+    font-size: 20px;
+    line-height: 26px;
+  }
+  
+  .departmentDescription {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  
+  .jobCard {
+    padding: 20px;
+    gap: 24px;
+  }
+  
+  .jobTitleRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .badges {
+    gap: 8px;
+  }
+  
+  .jobDetails {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .image {
+    height: 250px;
+  }
+}
+
+@media (max-width: 480px) {
+  .careersSection {
+    padding: 40px 0;
+  }
+  
+  .title {
+    font-size: 24px;
+    line-height: 30px;
+  }
+  
+  .description {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  
+  .departmentTitle {
+    font-size: 18px;
+    line-height: 24px;
+  }
+  
+  .jobCard {
+    padding: 16px;
+    gap: 20px;
+  }
+  
+  .jobTitle {
+    font-size: 16px;
+    line-height: 22px;
+  }
+  
+  .jobDescription {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  
+  .badges {
+    flex-wrap: wrap;
+  }
+  
+  .departmentBadge span,
+  .locationBadge span {
+    font-size: 12px;
+  }
+  
+  .jobDetail span {
+    font-size: 14px;
+  }
+  
+  .image {
+    height: 200px;
+  }
+}
+
+/* Large desktop adjustments */
+@media (min-width: 1200px) {
+  .departmentSection {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 32px;
+  }
+  
+  .departmentInfo {
+    flex-shrink: 0;
+    width: 300px;
+  }
+  
+  .jobsGrid {
+    flex: 1;
+  }
+}

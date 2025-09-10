@@ -1,7 +1,11 @@
 import React from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
 import styles from './Header.module.css';
 
 const Header: React.FC = () => {
+    const router = useRouter();
+    
     return (
         <header className={styles.header}>
             <div className={styles.container}>
@@ -14,19 +18,23 @@ const Header: React.FC = () => {
                     </div>
                     
                     <nav className={styles.navigation}>
-                        <a href="#home" className={styles.navLink}>Home</a>
-                        <a href="#about-us" className={styles.navLink}>About Us</a>
-                        <a href="#contact-us" className={styles.navLink}>Contact Us</a>
-                        <a href="#blog" className={styles.navLink}>Blog</a>
+                        <Link href="/" className={`${styles.navLink} ${router.pathname === '/' ? styles.active : ''}`}>
+                            Home
+                        </Link>
+                        <Link href="/about" className={`${styles.navLink} ${router.pathname === '/about' ? styles.active : ''}`}>
+                            About Us
+                        </Link>
+                        <Link href="/contact" className={`${styles.navLink} ${router.pathname === '/contact' ? styles.active : ''}`}>
+                            Contact Us
+                        </Link>
                     </nav>
                     
                     <div className={styles.ctaContainer}>
-                        <button className={styles.loginButton}>
-                            Se connecter
-                        </button>
-                        <button className={styles.signupButton}>
-                            S'inscrire
-                        </button>
+                        <Link href="/contact#waitlist">
+                            <button className={styles.signupButton}>
+                                Rejoindre la waitinglist
+                            </button>
+                        </Link>
                     </div>
                 </div>
                 <div className={styles.headerBorder}></div>

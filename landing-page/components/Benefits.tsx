@@ -1,50 +1,77 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './Benefits.module.css';
 
 const Benefits: React.FC = () => {
+    const [currentSlide, setCurrentSlide] = useState(0);
+
+    const benefits = [
+        {
+            title: "Impact Environnemental",
+            description: "Réduisez votre empreinte carbone de 50% grâce à nos solutions intelligentes de gestion des déchets."
+        },
+        {
+            title: "Économies Garanties",
+            description: "Diminuez vos coûts opérationnels de 30% avec l'optimisation automatique des tournées de collecte."
+        },
+        {
+            title: "Analytics Avancés",
+            description: "Suivez vos performances en temps réel avec des tableaux de bord détaillés et des rapports personnalisés."
+        },
+        {
+            title: "Efficacité Maximale",
+            description: "Automatisez vos processus et gagnez jusqu'à 40% de temps sur la gestion de vos déchets."
+        },
+        {
+            title: "Intégration Facile",
+            description: "Connectez Collectam à vos systèmes existants en quelques clics grâce à notre API flexible."
+        }
+    ];
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentSlide((prev) => (prev + 1) % benefits.length);
+        }, 4000);
+        
+        return () => clearInterval(interval);
+    }, [benefits.length]);
+
     return (
-        <div className={styles.benefits}>
-            <div className={styles.backgroundImage}>
-                <img 
-                    src="https://api.builder.io/api/v1/image/assets/TEMP/24989868698f313ad34d7d5a4c42d01e74099093?width=4762" 
-                    alt="Lake with mountains and pine trees"
-                    className={styles.backgroundImg}
-                />
-            </div>
-            
+        <div id="benefits" className={styles.benefits}>
             <div className={styles.container}>
-                <div className={styles.content}>
-                    <div className={styles.header}>
-                        <div className={styles.badge}>
-                            <span>Benefits</span>
-                        </div>
-                        
-                        <div className={styles.titleSection}>
-                            <div className={styles.decorativeLine}>
-                                <svg width="290" height="26" viewBox="0 0 290 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M8.5 9.08496H215.167L67.833 17.085H281.5" stroke="#3BB976" strokeOpacity="0.35" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 1"/>
-                                </svg>
-                            </div>
-                            
-                            <h2 className={styles.title}>
-                                Regeneration not only for<br />
-                                your agriculture, but for the<br />
-                                world.
-                            </h2>
-                            
-                            <p className={styles.description}>
-                                We play a vital role in promoting regenerative practices, not only in<br />
-                                agriculture but also in restoring balance to our ecosystems.
-                            </p>
-                        </div>
-                        
-                        <button className={styles.ctaButton}>
-                            S'inscrire maintenant
-                        </button>
+                <div className={styles.header}>
+                    <div className={styles.badge}>
+                        <span>Benefits</span>
                     </div>
                     
-                    <div className={styles.dashboardPreview}>
-                        <div className={styles.greenFrame}></div>
+                    <h2 className={styles.title}>
+                        Les avantages révolutionnaires<br />
+                        de Collectam
+                    </h2>
+                    
+                    <p className={styles.description}>
+                        Découvrez comment Collectam transforme la gestion des déchets en une opportunité<br />
+                        d'économies, d'efficacité et d'impact environnemental positif.
+                    </p>
+                </div>
+
+                <div className={styles.carousel}>
+                    <div className={styles.carouselTrack} style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
+                        {benefits.map((benefit, index) => (
+                            <div key={index} className={styles.benefitCard}>
+                                <h3 className={styles.benefitTitle}>{benefit.title}</h3>
+                                <p className={styles.benefitDescription}>{benefit.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <div className={styles.carouselIndicators}>
+                        {benefits.map((_, index) => (
+                            <button
+                                key={index}
+                                className={`${styles.indicator} ${index === currentSlide ? styles.active : ''}`}
+                                onClick={() => setCurrentSlide(index)}
+                            />
+                        ))}
                     </div>
                 </div>
             </div>

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const UserController = require('../controllers/UserController');
+const AuthController = require('../controllers/AuthController');
 const AuthExtrasController = require('../controllers/AuthExtrasController');
 const {
     userSignupValidation,
@@ -85,7 +86,7 @@ const { authenticateToken } = require('../middlewares/auth');
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/signup', userSignupValidation, handleValidationErrors, UserController.signup);
+router.post('/signup', userSignupValidation, handleValidationErrors, AuthController.signup);
 
 /**
  * @swagger
@@ -142,7 +143,7 @@ router.post('/signup', userSignupValidation, handleValidationErrors, UserControl
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/login', userLoginValidation, handleValidationErrors, UserController.login);
+router.post('/login', userLoginValidation, handleValidationErrors, AuthController.login);
 
 /**
  * @swagger

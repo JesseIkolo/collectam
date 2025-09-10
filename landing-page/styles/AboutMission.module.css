@@ -1,0 +1,36 @@
+:global(:root) {
+  --badge-bg: #E0FAEC;
+  --badge-color: #1FC16B;
+}
+
+.aboutMission {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 40px 0;
+  width: 100%;
+}
+
+.missionHeader {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 36px;
+  font-weight: 600;
+  color: #0D111B;
+  margin: 0;
+}
+
+.missionDescription {
+  color: #525866;
+  font-size: 18px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .missionHeader {
+    font-size: 28px;
+  }
+  .missionDescription {
+    font-size: 16px;
+  }
+}

@@ -94,6 +94,23 @@
   transform: translateY(-1px);
 }
 
+.navLink.active {
+  color: #1DAF61;
+  font-weight: 600;
+  position: relative;
+}
+
+.navLink.active::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #1DAF61;
+  border-radius: 1px;
+}
+
 .ctaContainer {
   margin-left: 12px;
   display: flex;

@@ -4,9 +4,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 120px 0;
-  background: #fff;
+  padding: 80px 0 100px 0;
+  background: white;
+  position: relative;
+  z-index: 10;
+  margin: 0;
   width: 100%;
+  overflow: visible;
 }
 
 .container {
@@ -16,7 +20,7 @@
   width: 100%;
   max-width: 1200px;
   padding: 0 32px;
-  gap: 80px;
+  gap: 60px;
 }
 
 .header {
@@ -25,6 +29,10 @@
   align-items: center;
   gap: 24px;
   text-align: center;
+  width: 100%;
+  margin-bottom: 40px;
+  padding-top: 0;
+  margin-top: 0;
 }
 
 .badge {
@@ -51,11 +59,26 @@
   margin: 0;
 }
 
+.description {
+  color: #525866;
+  text-align: center;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 28px;
+  letter-spacing: -0.18px;
+  margin: 0;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .featuresGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 40px;
   width: 100%;
+  max-width: 1200px;
 }
 
 .featureCard {
@@ -65,7 +88,8 @@
   border-radius: 12px;
   background: #FAFBFC;
   border: 1px solid #E1E4EA;
-  min-height: 150px;
+  min-height: 300px;
+  height: auto;
 }
 
 .featureContent {
@@ -80,26 +104,17 @@
   align-items: flex-start;
 }
 
-.featureIcon {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: rgba(29, 175, 97, 0.1);
-}
-
-.featureIcon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.featureIcon span {
+.featureCategory {
   color: #1DAF61;
   font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: -0.14px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(29, 175, 97, 0.1);
+  display: inline-block;
 }
 
 .featureTitle {
@@ -131,15 +146,16 @@
 
 /* Fields Feature Styles */
 .fieldCard {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 20px;
   padding: 24px;
+  background: #fff;
   border-radius: 16px;
-  background: linear-gradient(135deg, #1DAF61 0%, #3DD182 100%);
-  color: white;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   width: 280px;
-  position: relative;
+  height: 200px;
+  z-index: 1;
 }
 
 .fieldHeader {
@@ -192,29 +208,161 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .progressBar {
-  height: 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  width: 100%;
+  height: 4px;
+  background: rgba(29, 175, 97, 0.1);
+  border-radius: 2px;
   overflow: hidden;
+  margin-bottom: 8px;
 }
 
 .progressFill {
+  width: 85%;
   height: 100%;
-  width: 70%;
-  background: white;
-  border-radius: 4px;
+  background: linear-gradient(90deg, #1DAF61 0%, #16A085 100%);
+  border-radius: 2px;
 }
 
 .progressText {
-  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #1DAF61;
+  letter-spacing: 0.5px;
+}
+
+.fieldMetrics {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.metricValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1DAF61;
+  margin-bottom: 4px;
+}
+
+.metricLabel {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* Analytics Feature Styles */
+.analyticsPanel {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.analyticsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.panelTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.accuracyBadge {
+  background: rgba(29, 175, 97, 0.1);
+  color: #1DAF61;
+  padding: 4px 8px;
+  border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
-  color: white;
-  text-align: center;
+}
+
+.predictionChart {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  height: 120px;
+  margin-bottom: 16px;
+  padding: 0 8px;
+}
+
+.chartBar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.dayLabel {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.barContainer {
+  position: relative;
+  width: 20px;
+  height: 80px;
+  display: flex;
+  align-items: end;
+  gap: 2px;
+}
+
+.predictedBar {
+  width: 8px;
+  background: #1DAF61;
+  border-radius: 2px 2px 0 0;
+  opacity: 0.8;
+}
+
+.actualBar {
+  width: 8px;
+  background: #16A085;
+  border-radius: 2px 2px 0 0;
+}
+
+.volumeLabel {
+  font-size: 10px;
+  color: #999;
+  font-weight: 500;
+}
+
+.chartLegend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+}
+
+.legendColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
 }
 
 /* Tasks Feature Styles */
@@ -521,23 +669,23 @@
     padding: 0 24px;
     gap: 60px;
   }
-  
+
   .featuresGrid {
     grid-template-columns: 1fr;
     gap: 32px;
   }
-  
+
   .featureCard {
     flex-direction: column;
     gap: 24px;
     padding: 32px;
     min-height: auto;
   }
-  
+
   .featureVisual {
     min-width: auto;
   }
-  
+
   .title {
     font-size: 40px;
     line-height: 48px;
@@ -548,32 +696,32 @@
   .features {
     padding: 80px 0;
   }
-  
+
   .container {
     padding: 0 16px;
     gap: 48px;
   }
-  
+
   .title {
     font-size: 32px;
     line-height: 40px;
   }
-  
+
   .featureCard {
     padding: 24px;
     gap: 20px;
   }
-  
+
   .featureTitle {
     font-size: 24px;
     line-height: 30px;
   }
-  
+
   .taskColumns {
     flex-direction: column;
     gap: 16px;
   }
-  
+
   .fieldCard {
     width: 100%;
   }
@@ -583,22 +731,22 @@
   .features {
     padding: 60px 0;
   }
-  
+
   .title {
     font-size: 28px;
     line-height: 34px;
   }
-  
+
   .featureTitle {
     font-size: 20px;
     line-height: 26px;
   }
-  
+
   .featureDescription {
     font-size: 14px;
     line-height: 20px;
   }
-  
+
   .featureCard {
     padding: 20px;
   }

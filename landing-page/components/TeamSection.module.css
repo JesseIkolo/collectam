@@ -1,0 +1,423 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+.teamSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 120px 0;
+  background: #fff;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 1200px;
+  padding: 32px;
+  gap: 64px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 600px;
+  gap: 32px;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999px;
+  background: #E0FAEC;
+}
+
+.badge span {
+  color: #1FC16B;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: -0.14px;
+}
+
+.headingContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+.title {
+  color: #000;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 46px;
+  font-weight: 500;
+  line-height: 57.6px;
+  letter-spacing: -1px;
+  margin: 0;
+  width: 100%;
+}
+
+.description {
+  color: #525866;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 24px;
+  margin: 0;
+  width: 100%;
+}
+
+.teamCarousel {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  position: relative;
+}
+
+.navButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 2px solid #E5E7EB;
+  border-radius: 50%;
+  background: #fff;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.navButton:hover {
+  border-color: #1FC16B;
+  color: #1FC16B;
+  background: #F0FDF4;
+}
+
+.navButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  width: 100%;
+  flex: 1;
+}
+
+.memberCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 280px;
+  gap: 24px;
+}
+
+.colorContainer {
+  width: 100%;
+  height: 296px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 32px;
+}
+
+.paginationDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  background: #E5E7EB;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.paginationDot.active {
+  background: #1FC16B;
+}
+
+.paginationDot:hover {
+  background: #9CA3AF;
+}
+
+.paginationDot.active:hover {
+  background: #16A34A;
+}
+
+.memberInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  width: 100%;
+}
+
+.memberDetails {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+.memberName {
+  color: #000;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 35.2px;
+  letter-spacing: -0.32px;
+  margin: 0;
+  width: 100%;
+}
+
+.memberRole {
+  color: #1FC16B;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.18px;
+  margin: 0;
+  width: 100%;
+}
+
+.memberDescription {
+  color: #525866;
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 24px;
+  margin: 0;
+  width: 100%;
+}
+
+.socialLinks {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.socialLink {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  justify-content: center;
+  align-items: center;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.socialLink:hover {
+  opacity: 0.7;
+}
+
+.socialLink svg {
+  width: 24px;
+  height: 24px;
+  fill: #98A2B3;
+  transition: fill 0.2s ease;
+}
+
+.socialLink:hover svg {
+  fill: #1FC16B;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .teamSection {
+    padding: 80px 0;
+  }
+  
+  .container {
+    padding: 24px;
+    gap: 48px;
+  }
+  
+  .title {
+    font-size: 36px;
+    line-height: 44px;
+  }
+  
+  .teamCarousel {
+    gap: 16px;
+  }
+  
+  .navButton {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .teamGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  
+  .memberCard {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .teamSection {
+    padding: 60px 0;
+  }
+  
+  .container {
+    padding: 16px;
+    gap: 32px;
+  }
+  
+  .header {
+    gap: 24px;
+  }
+  
+  .headingContent {
+    gap: 12px;
+  }
+  
+  .title {
+    font-size: 28px;
+    line-height: 34px;
+  }
+  
+  .description {
+    font-size: 16px;
+    line-height: 22px;
+  }
+  
+  .teamCarousel {
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .navButton {
+    display: none;
+  }
+  
+  .teamGrid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  
+  .memberCard {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  
+  .colorContainer {
+    height: 250px;
+  }
+  
+  .memberName {
+    font-size: 24px;
+    line-height: 30px;
+  }
+  
+  .memberRole {
+    font-size: 16px;
+    line-height: 22px;
+  }
+  
+  .memberDescription {
+    font-size: 16px;
+    line-height: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .teamSection {
+    padding: 40px 0;
+  }
+  
+  .title {
+    font-size: 24px;
+    line-height: 30px;
+  }
+  
+  .description {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  
+  .memberCard {
+    max-width: 100%;
+  }
+  
+  .colorContainer {
+    height: 220px;
+  }
+  
+  .memberName {
+    font-size: 20px;
+    line-height: 26px;
+  }
+  
+  .memberRole {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  
+  .memberDescription {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  
+  .socialLinks {
+    gap: 16px;
+  }
+  
+  .socialLink {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .socialLink svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (max-width: 320px) {
+  .container {
+    padding: 12px;
+  }
+  
+  .teamGrid {
+    gap: 24px;
+  }
+  
+  .colorContainer {
+    height: 200px;
+  }
+  
+  .memberName {
+    font-size: 18px;
+    line-height: 24px;
+  }
+}

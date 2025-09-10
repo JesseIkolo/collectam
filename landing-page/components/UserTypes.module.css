@@ -1,36 +1,94 @@
 @import url('https://fonts.googleapis.com/css2?family=Georgia:wght@400&display=swap');
 
 .userTypes {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  width: 100%;
-  padding: 40px 0;
-  background: #fff;
+  padding: 80px 0 80px 0;
+  background: #FAFBFC;
+}
+
+.sectionHeader {
+  text-align: center;
+  margin-bottom: 60px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 24px;
+}
+
+.sectionTitle {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #0D111B;
+  margin-bottom: 20px;
+  letter-spacing: -0.02em;
+}
+
+.sectionDescription {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #525866;
+  margin: 0;
 }
 
 .cardsContainer {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
   gap: 0;
-  flex: 1;
-  max-width: 100%;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  height: auto;
+  min-height: 800px;
 }
 
 .card {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  flex: 1;
-  min-height: 400px;
+  align-items: stretch;
+  justify-content: space-between;
+  position: relative;
+  padding: 40px;
+  min-height: 500px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.whiteCard {
+  background: #ffffff;
+  color: #000000;
+}
+
+.greenCard {
+  background: #22c55e !important;
+  color: #ffffff !important;
   position: relative;
 }
 
-.orangeCard {
-  background: #D79637;
+.greenCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #22c55e;
+  z-index: -1;
 }
 
-.lightOrangeCard {
-  background: #E7B75F;
+.greenCard * {
+  color: #ffffff !important;
+}
+
+.greenCard .cardContent,
+.greenCard .cardDescription,
+.greenCard .imageContainer,
+.greenCard .buttonContainer,
+.greenCard .descriptionText {
+  background: transparent !important;
 }
 
 .greyCard {
@@ -39,29 +97,35 @@
 
 .cardContent {
   display: flex;
-  padding: 16px 16px 0 16px;
+  padding: 0;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   width: 100%;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 20px;
 }
 
 .imageContainer {
   display: flex;
   width: 100%;
-  max-width: 150px;
-  padding-bottom: 1.88px;
+  padding-bottom: 0;
   flex-direction: column;
-  align-items: flex-start;
-  margin-bottom: 12px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 10;
 }
 
 .cardImage {
-  height: 100px;
-  max-width: 150px;
+  height: 280px;
   width: 100%;
   border-radius: 8px;
   display: block;
+  object-fit: cover;
+  object-position: center;
 }
 
 
@@ -69,68 +133,86 @@
   display: flex;
   height: auto;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   width: 100%;
-  color: #231E15;
-  font-family: 'Georgia', serif;
-  font-size: 18px;
-  font-weight: 400;
-  line-height: 24px;
-  margin: 0;
+  font-family: Arial, sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 30px;
+  margin: 0 0 20px 0;
+  text-align: center;
 }
 
 .cardDescription {
   display: flex;
-  padding: 20px 24px;
+  padding: 0;
   flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex: 1;
+  justify-content: center;
+  align-items: center;
   width: 100%;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  flex-grow: 1;
 }
 
 .descriptionText {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   width: 100%;
+  max-width: 400px;
+  margin-bottom: 30px;
 }
 
 .descriptionText p {
   width: 100%;
-  color: #231E15;
   font-family: Arial, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 20px;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
   margin: 0;
+  text-align: center;
 }
 
 .buttonContainer {
   display: flex;
-  padding-top: 24px;
+  padding-top: 0;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   width: 100%;
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
 }
 
 .ctaButton {
-  display: flex;
-  padding: 12px 24px;
-  flex-direction: column;
-  align-items: center;
-  border-radius: 26px;
-  background: rgba(255, 255, 255, 0.00);
-  border: 1px solid #231E15;
-  color: #231E15;
+  display: block;
+  padding: 16px 32px;
   text-align: center;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border: 2px solid currentColor;
   font-family: Arial, sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 19.5px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  min-width: 250px;
+  position: relative;
+  z-index: 100;
+  color: inherit;
+}
+
+.greenCard .ctaButton {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 2px solid #ffffff !important;
+  color: #ffffff !important;
+}
+
+.greenCard .ctaButton:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
 }
 
 .ctaButton:hover {
@@ -145,78 +227,88 @@
 /* Responsive Design */
 @media (max-width: 1200px) {
   .cardsContainer {
-    flex-wrap: wrap;
-  }
-  
-  .card {
-    min-height: 80vh;
-  }
-  
-  .cardContent {
-    padding: 32px 32px 0 32px;
-  }
-  
-  .cardDescription {
-    padding: 32px;
-  }
-  
-  .imageContainer {
-    max-width: 400px;
+    height: 70vh;
   }
   
   .cardImage {
-    height: 500px;
-    max-width: 400px;
+    height: 200px;
+    width: 100%;
+  }
+  
+  .imageContainer {
+    width: 100%;
   }
 }
 
 @media (max-width: 1024px) {
   .cardsContainer {
-    flex-direction: column;
-  }
-  
-  .card {
-    min-height: auto;
-    flex-direction: row;
-    align-items: center;
-  }
-  
-  .cardContent {
-    padding: 24px;
-    flex: 1;
-  }
-  
-  .cardDescription {
-    padding: 24px;
-    flex: 1;
-  }
-  
-  .imageContainer {
-    max-width: 300px;
-    margin-bottom: 0;
-    margin-right: 24px;
-  }
-  
-  .cardImage {
-    height: 240px;
-    max-width: 280px;
-  }
-  
-  .cardTitle {
-    font-size: 22px;
-    line-height: 28px;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, 1fr);
     height: auto;
   }
   
+  .card {
+    padding: 30px;
+  }
+  
+  .cardImage {
+    height: 120px;
+    width: 100%;
+  }
+  
+  .imageContainer {
+    width: 100%;
+  }
+  
+  .cardTitle {
+    font-size: 20px;
+    line-height: 26px;
+  }
+  
   .descriptionText p {
-    font-size: 15px;
-    line-height: 24px;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  
+  .ctaButton {
+    min-width: 200px;
+    font-size: 14px;
+    padding: 12px 24px;
   }
 }
 
 @media (max-width: 768px) {
   .userTypes {
-    padding: 60px 0;
+    padding: 80px 0;
+    background: #FAFBFC;
+  }
+  
+  .sectionHeader {
+    text-align: center;
+    margin-bottom: 60px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 24px;
+  }
+  
+  .sectionTitle {
+    font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #0D111B;
+    margin-bottom: 20px;
+    letter-spacing: -0.02em;
+  }
+  
+  .sectionDescription {
+    font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1.6;
+    color: #525866;
+    margin: 0;
   }
   
   .card {
