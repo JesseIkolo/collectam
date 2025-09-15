@@ -29,16 +29,16 @@ const HeroSection: React.FC = () => {
                             <div className={styles.title}>
                                 <h1 className={styles.titleText}>
                                     <span className={styles.titleLine1}>Optimisons la collecte </span>
-                                    <span className={styles.titleLine2}>des dechets,avec Collectam</span>
+                                    <span className={styles.titleLine2}>des déchets avec Collectam</span>
                                 </h1>
                             </div>
                         </div>
                         
                         <div className={styles.subtitle}>
                             <p className={styles.subtitleText}>
-                                Our platform empowers agriculture to restore ecosystems,
+                                Une solution intelligente et durable grâce à l'IoT & l'IA
                                 <br />
-                                turning you farm a regenerative success story.
+                                « Ensemble, réinventons la gestion des déchets »
                             </p>
                         </div>
                     </div>

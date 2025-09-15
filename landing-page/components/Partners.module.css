@@ -1,0 +1,164 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+.partners {
+  padding: 40px 0;
+  background: #f8fafc;
+}
+
+.partnersContainer {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 50px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  flex-wrap: wrap;
+}
+
+.partnerItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 0 0 auto;
+  width: 160px;
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  height: 110px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.logoContainer:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.partnerLogo {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.partnerName {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+  width: 160px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .partnersContainer {
+    gap: 30px;
+  }
+  
+  .logoContainer {
+    width: 130px;
+    height: 90px;
+  }
+  
+  .partnerName {
+    font-size: 13px;
+    max-width: 130px;
+  }
+}
+
+@media (max-width: 768px) {
+  .partners {
+    padding: 50px 0;
+  }
+  
+  .sectionTitle {
+    font-size: 28px;
+  }
+  
+  .sectionDescription {
+    font-size: 15px;
+  }
+  
+  .partnersContainer {
+    gap: 25px;
+    justify-content: center;
+  }
+  
+  .logoContainer {
+    width: 120px;
+    height: 80px;
+    padding: 12px;
+  }
+  
+  .partnerName {
+    font-size: 12px;
+    max-width: 120px;
+  }
+}
+
+@media (max-width: 640px) {
+  .partnersContainer {
+    gap: 20px;
+  }
+  
+  .partnerItem {
+    flex: 0 0 calc(50% - 10px);
+    max-width: calc(50% - 10px);
+  }
+  
+  .logoContainer {
+    width: 100px;
+    height: 70px;
+    padding: 10px;
+  }
+  
+  .partnerName {
+    font-size: 11px;
+    max-width: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .partners {
+    padding: 40px 0;
+  }
+  
+  .sectionTitle {
+    font-size: 24px;
+  }
+  
+  .partnersContainer {
+    gap: 15px;
+    padding: 0 16px;
+  }
+  
+  .partnerItem {
+    flex: 0 0 calc(50% - 7px);
+    max-width: calc(50% - 7px);
+  }
+  
+  .logoContainer {
+    width: 90px;
+    height: 60px;
+    padding: 8px;
+  }
+  
+  .partnerName {
+    font-size: 10px;
+    max-width: 90px;
+  }
+}

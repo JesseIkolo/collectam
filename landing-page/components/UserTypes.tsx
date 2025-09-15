@@ -17,8 +17,8 @@ const UserTypes: React.FC = () => {
                     Qui peut utiliser Collectam ?
                 </h2>
                 <p className={styles.sectionDescription}>
-                    Collectam s'adapte à tous les acteurs de la gestion des déchets, des particuliers aux grandes entreprises. 
-                    Découvrez comment notre plateforme peut transformer votre approche de la collecte et du recyclage.
+                    La production mondiale de déchets augmente à un rythme alarmant, posant un défi majeur pour l'environnement et la société.
+                    Collectam apporte une réponse concrète : une plateforme innovante qui combine IoT et IA pour améliorer la collecte, réduire l'empreinte écologique et optimiser les ressources pour tous les acteurs.
                 </p>
             </div>
             <div className={styles.cardsContainer}>
@@ -44,10 +44,9 @@ const UserTypes: React.FC = () => {
                     <div className={styles.cardDescription}>
                         <div className={styles.descriptionText}>
                             <p>
-                                Simplifiez la gestion de vos déchets domestiques.<br />
-                                Planifiez vos collectes, suivez votre impact<br />
-                                environnemental et gagnez des récompenses<br />
-                                pour vos efforts écologiques.
+                                • Gérez vos déchets domestiques en toute simplicité.<br />
+                                • Planifiez vos collectes depuis l'application et suivez votre impact écologique en temps réel.<br />
+                                • Recevez des récompenses écoresponsables (réductions, bons d'achat, points fidélité).
                             </p>
                         </div>
                         
@@ -84,10 +83,9 @@ const UserTypes: React.FC = () => {
                     <div className={styles.cardDescription}>
                         <div className={styles.descriptionText}>
                             <p>
-                                Optimisez vos tournées de collecte avec notre<br />
-                                technologie IoT. Gérez vos missions, suivez<br />
-                                vos performances et maximisez votre efficacité<br />
-                                opérationnelle.
+                                • Optimisez vos tournées avec des itinéraires intelligents basés sur l'IA.<br />
+                                • Réduisez vos coûts opérationnels (jusqu'à -30% de carburant consommé).<br />
+                                • Analysez vos performances et améliorez votre efficacité jour après jour.
                             </p>
                         </div>
                         
@@ -117,18 +115,17 @@ const UserTypes: React.FC = () => {
                             />
                         </div>
                         <h3 className={styles.cardTitle}>
-                            Collectam Business<br />
-                            Solutions Avancées
+                            Solutions Business<br />
+                            Avancées
                         </h3>
                     </div>
                     
                     <div className={styles.cardDescription}>
                         <div className={styles.descriptionText}>
                             <p>
-                                Accédez à notre plateforme complète de gestion<br />
-                                des déchets. Gérez les organisations, supervisez<br />
-                                les opérations et accédez aux analytics avancés<br />
-                                pour optimiser votre activité.
+                                • Bénéficiez d'une plateforme complète avec tableau de bord et suivi en temps réel.<br />
+                                • Accédez à des analyses prédictives avancées pour mieux anticiper vos besoins.<br />
+                                • Automatisez vos opérations pour gagner du temps et réduire vos dépenses.
                             </p>
                         </div>
                         
@@ -166,10 +163,9 @@ const UserTypes: React.FC = () => {
                     <div className={styles.cardDescription}>
                         <div className={styles.descriptionText}>
                             <p>
-                                Réduisez vos coûts de gestion des déchets<br />
-                                et améliorez votre empreinte environnementale.<br />
-                                Solutions sur mesure pour entreprises<br />
-                                de toutes tailles.
+                                • Diminuez vos coûts de gestion des déchets grâce à une planification optimisée.<br />
+                                • Valorisez votre engagement RSE en réduisant votre empreinte carbone.<br />
+                                • Accédez à des solutions personnalisées adaptées à votre secteur.
                             </p>
                         </div>
                         

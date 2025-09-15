@@ -90,7 +90,6 @@ const Footer: React.FC = () => {
                             <ul className={styles.linksList}>
                                 <li><a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Features</a></li>
                                 <li><a href="#usertypes" onClick={(e) => { e.preventDefault(); document.getElementById('usertypes')?.scrollIntoView({ behavior: 'smooth' }); }}>Types d'utilisateurs</a></li>
-                                <li><a href="#pricing" onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }}>Pricing</a></li>
                             </ul>
                         </div>
                         

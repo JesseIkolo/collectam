@@ -1,0 +1,248 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+.beforeAfter {
+  padding: 80px 0;
+  background: #ffffff;
+}
+
+.sectionHeader {
+  text-align: center;
+  margin-bottom: 60px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 24px;
+}
+
+.sectionTitle {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #0D111B;
+  margin-bottom: 20px;
+  letter-spacing: -0.02em;
+}
+
+.sectionDescription {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #525866;
+  margin: 0;
+}
+
+.comparisonContainer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.beforeSection,
+.afterSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.sectionLabel {
+  margin-bottom: 30px;
+}
+
+.labelTitle {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: 0.1em;
+}
+
+.beforeSection .labelTitle {
+  color: #dc2626;
+}
+
+.afterSection .labelTitle {
+  color: #16a34a;
+}
+
+.labelSubtitle {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: #6b7280;
+  margin: 0;
+}
+
+.imageContainer {
+  margin-bottom: 30px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.imagePlaceholder {
+  width: 100%;
+  height: 300px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #f8fafc;
+}
+
+.beforeImage {
+  border: 4px solid #dc2626;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+}
+
+.beforeImage::after {
+  content: "Image AVANT";
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.afterImage {
+  border: 4px solid #16a34a;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+}
+
+.afterImage::after {
+  content: "Image APRÈS";
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.contentList {
+  width: 100%;
+  max-width: 400px;
+}
+
+.problemsList,
+.solutionsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.problemsList li,
+.solutionsList li {
+  font-family: 'Inter', -apple-system, Roboto, Helvetica, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+  position: relative;
+  padding-left: 30px;
+}
+
+.problemsList li:last-child,
+.solutionsList li:last-child {
+  border-bottom: none;
+}
+
+.problemsList li::before {
+  content: "✗";
+  position: absolute;
+  left: 0;
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.problemsList li {
+  color: #374151;
+}
+
+.solutionsList li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.solutionsList li {
+  color: #374151;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .comparisonContainer {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  
+  .sectionTitle {
+    font-size: 36px;
+  }
+  
+  .imagePlaceholder {
+    height: 250px;
+  }
+}
+
+@media (max-width: 768px) {
+  .beforeAfter {
+    padding: 60px 0;
+  }
+  
+  .sectionHeader {
+    margin-bottom: 40px;
+  }
+  
+  .sectionTitle {
+    font-size: 32px;
+  }
+  
+  .sectionDescription {
+    font-size: 16px;
+  }
+  
+  .comparisonContainer {
+    gap: 30px;
+    padding: 0 16px;
+  }
+  
+  .labelTitle {
+    font-size: 20px;
+  }
+  
+  .imagePlaceholder {
+    height: 200px;
+  }
+  
+  .problemsList li,
+  .solutionsList li {
+    font-size: 14px;
+    padding: 10px 0;
+    padding-left: 25px;
+  }
+}
+
+@media (max-width: 480px) {
+  .beforeAfter {
+    padding: 40px 0;
+  }
+  
+  .sectionTitle {
+    font-size: 28px;
+  }
+  
+  .comparisonContainer {
+    padding: 0 12px;
+  }
+  
+  .imagePlaceholder {
+    height: 180px;
+  }
+}

@@ -12,8 +12,8 @@ const Features: React.FC = () => {
                         sur la gestion des déchets
                     </h2>
                     <p className={styles.description}>
-                        Découvrez comment notre technologie IoT et IA transforme la collecte des déchets, 
-                        optimise les ressources et contribue à un environnement plus propre pour tous.
+                        Collectam combine IoT et IA pour améliorer la collecte, réduire l'empreinte écologique,
+                        et optimiser les ressources. Découvrez nos fonctionnalités principales et leur impact concret.
                     </p>
                 </div>
 
@@ -25,9 +25,9 @@ const Features: React.FC = () => {
                                 <h4 className={styles.featureCategory}>Réduction des Déchets</h4>
                             </div>
                             <h3 className={styles.featureTitle}>
-                                Réduisez jusqu'à 40%<br />
-                                vos déchets grâce à<br />
-                                l'optimisation IA
+                                Réduction des déchets<br />
+                                via IA : jusqu'à -40%<br />
+                                grâce à des prévisions précises
                             </h3>
                             <p className={styles.featureDescription}>
                                 Notre intelligence artificielle analyse les patterns de production de déchets et optimise les collectes pour minimiser le gaspillage et maximiser le recyclage.
@@ -50,19 +50,11 @@ const Features: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className={styles.fieldProgress}>
-                                    <div className={styles.progressBar}>
-                                        <div className={styles.progressFill}></div>
-                                    </div>
-                                    <span className={styles.progressText}>OPTIMISATION ACTIVE</span>
+                                    
                                 </div>
                                 <div className={styles.fieldMetrics}>
                                     <div className={styles.metric}>
-                                        <span className={styles.metricValue}>-40%</span>
-                                        <span className={styles.metricLabel}>Déchets</span>
-                                    </div>
-                                    <div className={styles.metric}>
-                                        <span className={styles.metricValue}>+25%</span>
-                                        <span className={styles.metricLabel}>Efficacité</span>
+                                       
                                     </div>
                                 </div>
                             </div>
@@ -76,9 +68,9 @@ const Features: React.FC = () => {
                                 <h4 className={styles.featureCategory}>Tournées Intelligentes</h4>
                             </div>
                             <h3 className={styles.featureTitle}>
-                                Optimisez vos tournées<br />
-                                et économisez 30%<br />
-                                de carburant
+                                Tournées intelligentes :<br />
+                                réduction de -30% du carburant<br />
+                                grâce à des itinéraires optimisés
                             </h3>
                             <p className={styles.featureDescription}>
                                 L'IoT et l'IA calculent les itinéraires optimaux en temps réel, réduisant les distances parcourues et l'empreinte carbone de vos collectes.
@@ -139,9 +131,9 @@ const Features: React.FC = () => {
                                 <h4 className={styles.featureCategory}>Surveillance IoT</h4>
                             </div>
                             <h3 className={styles.featureTitle}>
-                                Surveillez en temps réel<br />
-                                le niveau de remplissage<br />
-                                de vos conteneurs
+                                Surveillance IoT :<br />
+                                capteurs connectés détectant<br />
+                                en temps réel le remplissage
                             </h3>
                             <p className={styles.featureDescription}>
                                 Nos capteurs IoT intelligents surveillent continuellement l'état des conteneurs et alertent automatiquement quand une collecte est nécessaire.
@@ -186,9 +178,9 @@ const Features: React.FC = () => {
                                 <h4 className={styles.featureCategory}>Impact Environnemental</h4>
                             </div>
                             <h3 className={styles.featureTitle}>
-                                Réduisez votre<br />
-                                empreinte carbone<br />
-                                de 50% avec Collectam
+                                Suivi carbone :<br />
+                                suivi précis de votre empreinte (-50%)<br />
+                                avec rapports automatisés
                             </h3>
                             <p className={styles.featureDescription}>
                                 Suivez et mesurez l'impact environnemental positif de vos actions. Chaque déchet recyclé contribue à un avenir plus durable pour notre planète.

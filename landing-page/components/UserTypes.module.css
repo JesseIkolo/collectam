@@ -42,7 +42,6 @@
   max-width: 1200px;
   margin: 0 auto;
   height: auto;
-  min-height: 800px;
 }
 
 .card {
@@ -52,8 +51,8 @@
   justify-content: space-between;
   position: relative;
   padding: 40px;
-  min-height: 500px;
-  overflow: hidden;
+  min-height: 600px;
+  overflow: visible;
   box-sizing: border-box;
 }
 
@@ -120,7 +119,7 @@
 }
 
 .cardImage {
-  height: 280px;
+  height: 200px;
   width: 100%;
   border-radius: 8px;
   display: block;
@@ -227,11 +226,15 @@
 /* Responsive Design */
 @media (max-width: 1200px) {
   .cardsContainer {
-    height: 70vh;
+    height: auto;
+  }
+  
+  .card {
+    min-height: 550px;
   }
   
   .cardImage {
-    height: 200px;
+    height: 180px;
     width: 100%;
   }
   
@@ -243,16 +246,17 @@
 @media (max-width: 1024px) {
   .cardsContainer {
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(4, 1fr);
+    grid-template-rows: repeat(4, auto);
     height: auto;
   }
   
   .card {
     padding: 30px;
+    min-height: auto;
   }
   
   .cardImage {
-    height: 120px;
+    height: 150px;
     width: 100%;
   }
   

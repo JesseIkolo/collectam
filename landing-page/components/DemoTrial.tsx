@@ -15,14 +15,14 @@ const DemoTrial: React.FC = () => {
                 <div className={styles.header}>
                     <div className={styles.titleSection}>
                         <h2 className={styles.title}>
-                            <span className={styles.titleLine1}>Prêt à révolutionner</span>
-                            <span className={styles.titleLine2}>votre gestion des déchets ?</span>
+                            <span className={styles.titleLine1}>Collectam est plus qu'un outil :</span>
+                            <span className={styles.titleLine2}>c'est un acteur clé de la durabilité</span>
                         </h2>
                         
                         <div className={styles.description}>
                             <p>
-                                Rejoignez des milliers d'organisations qui transforment<br />
-                                leur gestion des déchets avec Collectam.
+                                Rejoignez dès aujourd'hui la liste prioritaire et devenez un pionnier<br />
+                                de la gestion intelligente des déchets !
                             </p>
                         </div>
                     </div>
