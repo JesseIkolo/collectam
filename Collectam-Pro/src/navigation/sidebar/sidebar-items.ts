@@ -15,6 +15,14 @@ import {
   Banknote,
   Gauge,
   GraduationCap,
+  Trash2,
+  MapPin,
+  Home,
+  User,
+  Award,
+  History,
+  QrCode,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -43,121 +51,80 @@ export interface NavGroup {
   items: NavMainItem[];
 }
 
-export const sidebarItems: NavGroup[] = [
-  {
-    id: 1,
-    label: "Dashboards",
-    items: [
+// Function to get sidebar items based on user role and type
+export const getSidebarItems = (userRole: string = 'user', userType: string = 'menage'): NavMainItem[] => {
+  // Collecteur role gets collector dashboard
+  if (userRole === 'collector') {
+    const basePath = '/dashboard/collector';
+    return [
       {
-        title: "Default",
-        url: "/dashboard/default",
-        icon: LayoutDashboard,
+        title: "Tableau de Bord",
+        url: basePath,
+        icon: Home,
       },
       {
-        title: "CRM",
-        url: "/dashboard/crm",
-        icon: ChartBar,
+        title: "Carte Temps Réel",
+        url: `${basePath}/map`,
+        icon: MapPin,
       },
       {
-        title: "Finance",
-        url: "/dashboard/finance",
-        icon: Banknote,
+        title: "Scanner QR",
+        url: `${basePath}/scanner`,
+        icon: QrCode,
       },
       {
-        title: "Analytics",
-        url: "/dashboard/analytics",
-        icon: Gauge,
-        comingSoon: true,
+        title: "Mes Véhicules",
+        url: `${basePath}/vehicles`,
+        icon: Truck,
       },
       {
-        title: "E-commerce",
-        url: "/dashboard/e-commerce",
-        icon: ShoppingBag,
-        comingSoon: true,
+        title: "Mon Profil",
+        url: `${basePath}/profile`,
+        icon: User,
       },
       {
-        title: "Academy",
-        url: "/dashboard/academy",
-        icon: GraduationCap,
-        comingSoon: true,
+        title: "Historique",
+        url: `${basePath}/history`,
+        icon: History,
       },
-      {
-        title: "Logistics",
-        url: "/dashboard/logistics",
-        icon: Forklift,
-        comingSoon: true,
-      },
-    ],
-  },
-  {
-    id: 2,
-    label: "Pages",
-    items: [
-      {
-        title: "Email",
-        url: "/dashboard",
-        icon: Mail,
-        comingSoon: true,
-      },
-      {
-        title: "Chat",
-        url: "/dashboard",
-        icon: MessageSquare,
-        comingSoon: true,
-      },
-      {
-        title: "Calendar",
-        url: "/dashboard",
-        icon: Calendar,
-        comingSoon: true,
-      },
-      {
-        title: "Kanban",
-        url: "/dashboard",
-        icon: Kanban,
-        comingSoon: true,
-      },
-      {
-        title: "Invoice",
-        url: "/dashboard",
-        icon: ReceiptText,
-        comingSoon: true,
-      },
-      {
-        title: "Users",
-        url: "/dashboard",
-        icon: Users,
-        comingSoon: true,
-      },
-      {
-        title: "Roles",
-        url: "/dashboard",
-        icon: Lock,
-        comingSoon: true,
-      },
-      {
-        title: "Authentication",
-        url: "/auth",
-        icon: Fingerprint,
-        subItems: [
-          { title: "Login v1", url: "/auth/v1/login", newTab: true },
-          { title: "Login v2", url: "/auth/v2/login", newTab: true },
-          { title: "Register v1", url: "/auth/v1/register", newTab: true },
-          { title: "Register v2", url: "/auth/v2/register", newTab: true },
-        ],
-      },
-    ],
-  },
-  {
-    id: 3,
-    label: "Misc",
-    items: [
-      {
-        title: "Others",
-        url: "/dashboard",
-        icon: SquareArrowUpRight,
-        comingSoon: true,
-      },
-    ],
-  },
-];
+    ];
+  }
+  
+  // Default user dashboard
+  const basePath = '/dashboard/user';
+  return [
+    {
+      title: "Accueil",
+      url: basePath,
+      icon: Home,
+    },
+    {
+      title: userType === 'entreprise' ? "Gestion des Déchets" : "Mes Déchets",
+      url: `${basePath}/waste-management`,
+      icon: Trash2,
+    },
+    {
+      title: "Carte en Temps Réel",
+      url: `${basePath}/map`,
+      icon: MapPin,
+    },
+    {
+      title: "Mon Profil",
+      url: `${basePath}/profile`,
+      icon: User,
+    },
+    {
+      title: "Mes Récompenses",
+      url: `${basePath}/rewards`,
+      icon: Award,
+    },
+    {
+      title: "Historique",
+      url: `${basePath}/history`,
+      icon: History,
+    },
+  ];
+};
+
+// Default export for backward compatibility
+export const sidebarItems: NavMainItem[] = getSidebarItems();

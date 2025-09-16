@@ -17,7 +17,7 @@ function getRoleBasedDashboard(userRole: string): string {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const publicRoutes = ["/auth/v2/login", "/auth/v1/register", "/auth/v2/register"];
+  const publicRoutes = ["/auth"];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
   const token =
     request.cookies.get("accessToken")?.value ?? request.headers.get("authorization")?.replace("Bearer ", "");
@@ -36,7 +36,7 @@ export function middleware(request: NextRequest) {
       const dashboardUrl = getRoleBasedDashboard(payload.role);
       return NextResponse.redirect(new URL(dashboardUrl, request.url));
     } catch {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return NextResponse.redirect(new URL("/dashboard/user", request.url));
     }
   }
 

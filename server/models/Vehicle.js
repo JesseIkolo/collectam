@@ -1,11 +1,28 @@
 const mongoose = require('mongoose');
 
 const vehicleSchema = new mongoose.Schema({
-  registration: {
+  licensePlate: {
     type: String,
     required: true,
     unique: true,
+    trim: true,
+    uppercase: true
+  },
+  brand: {
+    type: String,
+    required: true,
     trim: true
+  },
+  model: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  year: {
+    type: Number,
+    required: true,
+    min: 1900,
+    max: new Date().getFullYear() + 1
   },
   capacity: {
     type: Number,
@@ -14,38 +31,53 @@ const vehicleSchema = new mongoose.Schema({
   },
   vehicleType: {
     type: String,
-    enum: ['truck', 'van', 'motorcycle', 'bicycle'],
+    enum: ['camion', 'camionnette', 'moto', 'velo', 'tricycle'],
+    required: true
+  },
+  ownerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true
   },
   organizationId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Organization',
-    required: true
+    ref: 'Organization'
   },
-  collectorId: {
+  assignedCollectorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  groupId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Organization'
-  },
-  gpsData: {
-    latitude: Number,
-    longitude: Number,
-    lastUpdated: Date
+  location: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: [Number]
   },
   status: {
     type: String,
-    enum: ['available', 'in_use', 'maintenance', 'out_of_service'],
-    default: 'available'
+    enum: ['actif', 'inactif', 'maintenance', 'hors_service'],
+    default: 'actif'
+  },
+  fuelLevel: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 100
+  },
+  documents: {
+    carteGrise: String,
+    assurance: String,
+    controletechnique: String
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
 });
 
-vehicleSchema.index({ organizationId: 1, status: 1 });
-vehicleSchema.index({ organizationId: 1, collectorId: 1 });
-vehicleSchema.index({ registration: 1 }, { unique: true });
+vehicleSchema.index({ ownerId: 1, status: 1 });
+vehicleSchema.index({ organizationId: 1, assignedCollectorId: 1 });
+vehicleSchema.index({ licensePlate: 1 }, { unique: true });
+vehicleSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('Vehicle', vehicleSchema);

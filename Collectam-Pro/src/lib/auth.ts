@@ -3,13 +3,15 @@ interface LoginData {
   password: string;
 }
 
-interface RegisterData {
-  invitationToken: string;
-  firstName: string;
-  lastName: string;
+export interface RegisterData {
+  invitationToken?: string;
   email: string;
   password: string;
+  firstName: string;
+  lastName: string;
   phone: string;
+  companyName?: string;
+  userType?: string;
 }
 
 interface AuthResponse {
@@ -118,6 +120,10 @@ export class AuthService {
   static getUser(): any | null {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
+  }
+
+  static getCurrentUser(): any | null {
+    return this.getUser();
   }
 
   static isAuthenticated(): boolean {

@@ -42,6 +42,7 @@ const userSchema = new mongoose.Schema({
   userType: {
     type: String,
     enum: ['menage', 'collecteur', 'collectam-business', 'entreprise'],
+    default: 'menage',
     trim: true
   },
   address: {

@@ -29,10 +29,12 @@ app.use(helmet({
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5000'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5000'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  preflightContinue: false,
+  optionsSuccessStatus: 200
 }));
 
 // Rate limiting
@@ -90,6 +92,8 @@ app.use('/api/ads', require('./routes/ads'));
 app.use('/api/business', require('./routes/business'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/waitlist', require('./routes/waitlist'));
+app.use('/api/waste-requests', require('./routes/wasteRequests'));
+app.use('/api/map', require('./routes/map'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {

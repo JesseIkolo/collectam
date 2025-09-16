@@ -29,19 +29,15 @@ const userSignupValidation = [
     .notEmpty()
     .trim()
     .withMessage('Last name is required'),
-  oneOf([
-    body('phone').exists().bail().matches(E164_REGEX),
-    body('phoneNumber').exists().bail().matches(E164_REGEX),
-    body().custom((body) => {
-      const local = body.phone || body.phoneNumber;
-      const dial = body.dialCode || body.countryCode || body.phoneCode;
-      if (!local || !dial) return false;
-      const digits = String(local).replace(/\D/g, '');
-      const dialDigits = String(dial).replace(/\D/g, '');
-      const composed = `+${dialDigits}${digits}`;
-      return E164_REGEX.test(composed);
+  body('phone')
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .custom((value) => {
+      // Allow various phone formats including international
+      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+      return phoneRegex.test(value.replace(/[\s\-\(\)]/g, ''));
     })
-  ], 'Valid phone number is required (use E.164, e.g., +237699553309)')
+    .withMessage('Valid phone number is required')
 ];
 
 const userLoginValidation = [

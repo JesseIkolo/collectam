@@ -1,6 +1,6 @@
 import { AuthService } from '@/lib/auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export interface DashboardData {
   success: boolean;
@@ -103,6 +103,13 @@ class DashboardService {
    * Get user dashboard
    */
   async getUserDashboard(): Promise<DashboardData> {
+    return this.makeRequest('/api/dashboard/user');
+  }
+
+  /**
+   * Get enterprise dashboard (same as user dashboard for now)
+   */
+  async getEnterpriseDashboard(): Promise<DashboardData> {
     return this.makeRequest('/api/dashboard/user');
   }
 

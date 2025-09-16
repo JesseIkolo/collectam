@@ -1,10 +1,76 @@
 const Vehicle = require('../models/Vehicle');
+const User = require('../models/User');
 const { validationResult } = require('express-validator');
 
 class VehicleController {
-  // Register new vehicle (alias)
+  // Register new vehicle with limit check
   async registerVehicle(req, res) {
-    return this.register(req, res);
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation errors',
+          errors: errors.array()
+        });
+      }
+
+      const { licensePlate, brand, model, year, capacity, vehicleType } = req.body;
+      const ownerId = req.user._id;
+      const user = req.user;
+
+      // Check vehicle limit based on user type
+      const existingVehicles = await Vehicle.countDocuments({ ownerId });
+      const maxVehicles = user.userType === 'collectam-business' ? Infinity : 2;
+
+      if (existingVehicles >= maxVehicles) {
+        return res.status(403).json({
+          success: false,
+          message: `Limite de véhicules atteinte. Maximum ${maxVehicles} véhicules pour votre type de compte.`,
+          upgrade: user.userType !== 'collectam-business' ? {
+            message: 'Passez à Collectam Business pour enregistrer plus de véhicules',
+            action: 'upgrade_to_business'
+          } : null
+        });
+      }
+
+      // Check if license plate already exists
+      const existingVehicle = await Vehicle.findOne({ licensePlate });
+      if (existingVehicle) {
+        return res.status(409).json({
+          success: false,
+          message: 'Un véhicule avec cette plaque d\'immatriculation existe déjà'
+        });
+      }
+
+      const vehicle = new Vehicle({
+        licensePlate,
+        brand,
+        model,
+        year,
+        capacity,
+        vehicleType,
+        ownerId
+      });
+
+      await vehicle.save();
+
+      res.status(201).json({
+        success: true,
+        message: 'Véhicule enregistré avec succès',
+        data: { 
+          vehicle,
+          remainingSlots: maxVehicles === Infinity ? 'illimité' : maxVehicles - existingVehicles - 1
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Erreur interne du serveur',
+        error: error.message
+      });
+    }
   }
 
   // Get all vehicles
@@ -201,22 +267,109 @@ class VehicleController {
     }
   }
 
-  // Get collector vehicles
-  async getCollectorVehicles(req, res) {
+  // Get user's vehicles
+  async getUserVehicles(req, res) {
     try {
-      const collectorId = req.user.id;
+      const ownerId = req.user._id;
+      const user = req.user;
 
-      const vehicles = await Vehicle.find({ collectorId });
+      const vehicles = await Vehicle.find({ ownerId }).sort({ createdAt: -1 });
+      const maxVehicles = user.userType === 'collectam-business' ? Infinity : 2;
 
       res.json({
         success: true,
-        data: { vehicles }
+        data: { 
+          vehicles,
+          limit: {
+            current: vehicles.length,
+            max: maxVehicles,
+            canAddMore: vehicles.length < maxVehicles,
+            upgradeRequired: vehicles.length >= 2 && user.userType !== 'collectam-business'
+          }
+        }
       });
 
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Internal server error',
+        message: 'Erreur interne du serveur',
+        error: error.message
+      });
+    }
+  }
+
+  // Delete vehicle
+  async deleteVehicle(req, res) {
+    try {
+      const { id } = req.params;
+      const ownerId = req.user._id;
+
+      const vehicle = await Vehicle.findOne({ _id: id, ownerId });
+      if (!vehicle) {
+        return res.status(404).json({
+          success: false,
+          message: 'Véhicule non trouvé'
+        });
+      }
+
+      await Vehicle.findByIdAndDelete(id);
+
+      res.json({
+        success: true,
+        message: 'Véhicule supprimé avec succès'
+      });
+
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Erreur interne du serveur',
+        error: error.message
+      });
+    }
+  }
+
+  // Update vehicle
+  async updateVehicle(req, res) {
+    try {
+      const { id } = req.params;
+      const ownerId = req.user._id;
+      const { licensePlate, brand, model, year, capacity, vehicleType, status } = req.body;
+
+      const vehicle = await Vehicle.findOne({ _id: id, ownerId });
+      if (!vehicle) {
+        return res.status(404).json({
+          success: false,
+          message: 'Véhicule non trouvé'
+        });
+      }
+
+      // Check if new license plate already exists (if changed)
+      if (licensePlate && licensePlate !== vehicle.licensePlate) {
+        const existingVehicle = await Vehicle.findOne({ licensePlate });
+        if (existingVehicle) {
+          return res.status(409).json({
+            success: false,
+            message: 'Un véhicule avec cette plaque d\'immatriculation existe déjà'
+          });
+        }
+      }
+
+      const updatedVehicle = await Vehicle.findByIdAndUpdate(
+        id,
+        { licensePlate, brand, model, year, capacity, vehicleType, status },
+        { new: true, runValidators: true }
+      );
+
+      res.json({
+        success: true,
+        message: 'Véhicule mis à jour avec succès',
+        data: { vehicle: updatedVehicle }
+      });
+
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Erreur interne du serveur',
         error: error.message
       });
     }

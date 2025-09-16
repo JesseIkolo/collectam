@@ -10,17 +10,23 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AuthService } from "@/lib/auth";
 
-const FormSchema = z
-  .object({
-    invitationToken: z.string().min(1, { message: "Invitation token is required." }),
-    firstName: z.string().min(1, { message: "First name is required." }),
-    lastName: z.string().min(1, { message: "Last name is required." }),
-    email: z.string().email({ message: "Please enter a valid email address." }),
-    password: z.string().min(8, { message: "Password must be at least 8 characters." }),
-    confirmPassword: z.string().min(8, { message: "Confirm Password must be at least 8 characters." }),
-    phone: z.string().min(1, { message: "Phone number is required." }),
+const registerSchema = z.object({
+  invitationToken: z.string().optional(),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  phone: z.string().min(1, "Phone number is required"),
+  companyName: z.string().optional(),
+  userType: z.string().default("menage"),
+});
+
+const FormSchema = registerSchema
+  .extend({
+    confirmPassword: z.string().min(8, "Confirm Password must be at least 8 characters"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match.",
@@ -41,6 +47,8 @@ export function RegisterForm() {
       password: "",
       confirmPassword: "",
       phone: "",
+      companyName: "",
+      userType: "menage",
     },
   });
 
@@ -53,7 +61,28 @@ export function RegisterForm() {
       
       if (result.success) {
         toast.success("Registration successful! Redirecting to dashboard...");
-        router.push("/dashboard");
+        
+        // Get user data to determine correct dashboard
+        const userData = result.data?.user;
+        if (userData?.role) {
+          switch (userData.role) {
+            case 'admin':
+              router.push('/dashboard/admin');
+              break;
+            case 'org_admin':
+              router.push('/dashboard/org-admin');
+              break;
+            case 'collector':
+              router.push('/dashboard/collector');
+              break;
+            case 'user':
+            default:
+              router.push('/dashboard/user');
+              break;
+          }
+        } else {
+          router.push('/dashboard/user');
+        }
       } else {
         toast.error(result.message || "Registration failed");
       }
@@ -72,9 +101,9 @@ export function RegisterForm() {
           name="invitationToken"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Invitation Token</FormLabel>
+              <FormLabel>Invitation Token (Optional)</FormLabel>
               <FormControl>
-                <Input id="invitationToken" type="text" placeholder="Enter your invitation token" {...field} />
+                <Input id="invitationToken" type="text" placeholder="Enter your invitation token (optional)" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -129,6 +158,42 @@ export function RegisterForm() {
               <FormLabel>Phone Number</FormLabel>
               <FormControl>
                 <Input id="phone" type="tel" placeholder="+33 1 23 45 67 89" autoComplete="tel" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="userType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>User Type</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your user type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="menage">Ménage (Household)</SelectItem>
+                  <SelectItem value="collecteur">Collecteur (Collector)</SelectItem>
+                  <SelectItem value="collectam-business">Collectam Business</SelectItem>
+                  <SelectItem value="entreprise">Entreprise (Company)</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="companyName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Company Name (Optional)</FormLabel>
+              <FormControl>
+                <Input id="companyName" type="text" placeholder="Your company name" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

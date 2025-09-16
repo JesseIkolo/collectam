@@ -39,12 +39,29 @@ module.exports = {
                 });
             }
 
-            // Determine final role - prioritize invitation role, then provided role, then default
-            let finalRole = 'user';
+            // Determine final role - map userType to role
+            let finalRole = role || 'user';
+            
+            // Map userType to appropriate role
+            if (userType) {
+                switch (userType) {
+                    case 'collecteur':
+                    case 'collectam-business':
+                        finalRole = 'collector';
+                        break;
+                    case 'entreprise':
+                        finalRole = 'user';
+                        break;
+                    case 'menage':
+                    default:
+                        finalRole = 'user';
+                        break;
+                }
+            }
+            
+            // Override with invitation role if provided
             if (invitationResult && invitationResult.payload.role) {
                 finalRole = invitationResult.payload.role;
-            } else if (role) {
-                finalRole = role;
             }
 
             // Create user with invitation data

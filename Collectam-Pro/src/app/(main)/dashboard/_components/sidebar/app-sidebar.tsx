@@ -12,8 +12,9 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { APP_CONFIG } from "@/config/app-config";
-import { rootUser } from "@/data/users";
-import { sidebarItems } from "@/navigation/sidebar/sidebar-items";
+import { getSidebarItems } from "@/navigation/sidebar/sidebar-items";
+import { useEffect, useState } from "react";
+import { AuthService } from "@/lib/auth";
 
 import { NavMain } from "./nav-main";
 import { NavUser } from "./nav-user";
@@ -56,6 +57,26 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [user, setUser] = useState<any>(null);
+  const [sidebarItems, setSidebarItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    const currentUser = AuthService.getCurrentUser();
+    if (currentUser) {
+      const userData = {
+        name: `${currentUser.firstName} ${currentUser.lastName}`,
+        email: currentUser.email,
+        avatar: "/avatars/arhamkhnz.png",
+        userType: currentUser.userType || 'menage'
+      };
+      setUser(userData);
+      
+      // Get sidebar items based on user role and type
+      const items = getSidebarItems(currentUser.role || 'user', currentUser.userType || 'menage');
+      setSidebarItems(items);
+    }
+  }, []);
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>
@@ -76,7 +97,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={rootUser} />
+        {user && <NavUser user={user} />}
       </SidebarFooter>
     </Sidebar>
   );

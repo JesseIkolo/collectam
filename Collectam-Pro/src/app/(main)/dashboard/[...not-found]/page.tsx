@@ -1,10 +1,19 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
 export default function DashboardNotFound() {
+  const router = useRouter();
+  
+  useEffect(() => {
+    // Redirect to main dashboard instead of showing not found
+    router.replace('/dashboard');
+  }, [router]);
+
   return (
     <div className="flex h-full flex-col items-center justify-center space-y-2 text-center">
-      <h1 className="text-2xl font-semibold">Page not found.</h1>
-      <p className="text-muted-foreground">This section will be added in future updates.</p>
+      <div className="animate-pulse">Redirection...</div>
     </div>
   );
 }

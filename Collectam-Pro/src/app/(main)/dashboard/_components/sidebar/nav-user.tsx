@@ -23,6 +23,7 @@ export function NavUser({
     readonly name: string;
     readonly email: string;
     readonly avatar: string;
+    readonly userType?: string;
   };
 }) {
   const { isMobile } = useSidebar();
