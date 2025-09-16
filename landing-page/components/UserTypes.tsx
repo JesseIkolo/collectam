@@ -30,9 +30,9 @@ const UserTypes: React.FC = () => {
                                 src="/menage.jpg" 
                                 alt="Ménages" 
                                 width={400} 
-                                height={280} 
+                                height={200} 
                                 className={styles.cardImage}
-                                quality={95}
+                                quality={85}
                                 priority
                             />
                         </div>
@@ -69,10 +69,9 @@ const UserTypes: React.FC = () => {
                                 src="/collector.jpg" 
                                 alt="Collecteurs" 
                                 width={400} 
-                                height={280} 
+                                height={200} 
                                 className={styles.cardImage}
-                                quality={95}
-                                priority
+                                quality={85}
                             />
                         </div>
                         <h3 className={styles.cardTitle}>
@@ -108,10 +107,9 @@ const UserTypes: React.FC = () => {
                                 src="/collectam-business.jpg" 
                                 alt="Collectam Business" 
                                 width={400} 
-                                height={280} 
+                                height={200} 
                                 className={styles.cardImage}
-                                quality={95}
-                                priority
+                                quality={85}
                             />
                         </div>
                         <h3 className={styles.cardTitle}>
@@ -148,10 +146,9 @@ const UserTypes: React.FC = () => {
                                 src="/entreprise.jpg" 
                                 alt="Entreprises" 
                                 width={400} 
-                                height={280} 
+                                height={200} 
                                 className={styles.cardImage}
-                                quality={95}
-                                priority
+                                quality={85}
                             />
                         </div>
                         <h3 className={styles.cardTitle}>

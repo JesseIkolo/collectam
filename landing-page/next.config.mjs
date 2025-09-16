@@ -12,6 +12,11 @@ const nextConfig = {
     esmExternals: true,
   },
   transpilePackages: ['lucide-react'],
+  images: {
+    unoptimized: true,
+  },
+  trailingSlash: true,
+  output: 'export',
 };
 
 export default nextConfig;

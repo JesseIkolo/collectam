@@ -5,17 +5,17 @@ import styles from './Partners.module.css';
 const Partners: React.FC = () => {
     const partners = [
         {
-            logo: '/logo HYSACAM.jpg',
+            logo: '/logo-hysacam.jpg',
             name: 'HYSACAM',
             alt: 'Logo HYSACAM'
         },
         {
-            logo: '/logo mairie douala 3.png',
+            logo: '/logo-mairie-douala-3.png',
             name: 'Mairie Douala 3',
             alt: 'Logo Mairie Douala 3'
         },
         {
-            logo: '/logo mairie douala 5.png',
+            logo: '/logo-mairie-douala-5.png',
             name: 'Mairie Douala 5',
             alt: 'Logo Mairie Douala 5'
         },
@@ -25,7 +25,7 @@ const Partners: React.FC = () => {
             alt: 'Logo Communauté Urbaine de Douala'
         },
         {
-            logo: '/LOGO-MAIRIE douala 4.jpg',
+            logo: '/logo-mairie-douala-4.jpg',
             name: 'Mairie Douala 4',
             alt: 'Logo Mairie Douala 4'
         }
