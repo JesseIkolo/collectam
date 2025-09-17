@@ -23,6 +23,10 @@ import {
   History,
   QrCode,
   Truck,
+  BarChart3,
+  Activity,
+  CreditCard,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -53,6 +57,43 @@ export interface NavGroup {
 
 // Function to get sidebar items based on user role and type
 export const getSidebarItems = (userRole: string = 'user', userType: string = 'menage'): NavMainItem[] => {
+  // Collectam Business gets business dashboard
+  if (userType === 'collectam-business') {
+    const basePath = '/dashboard/business';
+    return [
+      {
+        title: "Vue d'ensemble",
+        url: basePath,
+        icon: BarChart3,
+      },
+      {
+        title: "Gestion de Flotte",
+        url: `${basePath}/fleet`,
+        icon: Truck,
+      },
+      {
+        title: "Carte Temps Réel",
+        url: `${basePath}/map`,
+        icon: MapPin,
+      },
+      {
+        title: "Analytics",
+        url: `${basePath}/analytics`,
+        icon: Activity,
+      },
+      {
+        title: "Facturation",
+        url: `${basePath}/billing`,
+        icon: CreditCard,
+      },
+      {
+        title: "Paramètres",
+        url: `${basePath}/settings`,
+        icon: Settings,
+      },
+    ];
+  }
+
   // Collecteur role gets collector dashboard
   if (userRole === 'collector') {
     const basePath = '/dashboard/collector';

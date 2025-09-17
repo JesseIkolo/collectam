@@ -48,8 +48,19 @@ const vehicleSchema = new mongoose.Schema({
     ref: 'User'
   },
   location: {
-    type: { type: String, enum: ['Point'], default: 'Point' },
-    coordinates: [Number]
+    type: { 
+      type: String, 
+      enum: ['Point']
+    },
+    coordinates: {
+      type: [Number],
+      validate: {
+        validator: function(v) {
+          return v.length === 2;
+        },
+        message: 'Coordinates must be an array of exactly 2 numbers [longitude, latitude]'
+      }
+    }
   },
   status: {
     type: String,
@@ -78,6 +89,6 @@ const vehicleSchema = new mongoose.Schema({
 vehicleSchema.index({ ownerId: 1, status: 1 });
 vehicleSchema.index({ organizationId: 1, assignedCollectorId: 1 });
 vehicleSchema.index({ licensePlate: 1 }, { unique: true });
-vehicleSchema.index({ location: '2dsphere' });
+vehicleSchema.index({ location: '2dsphere' }, { sparse: true });
 
 module.exports = mongoose.model('Vehicle', vehicleSchema);

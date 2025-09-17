@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 const winston = require('winston');
 const { specs, swaggerUi, swaggerOptions } = require('./config/swagger');
 const WebSocketService = require('./services/WebSocketService');
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 const app = express();
 
@@ -90,6 +90,7 @@ app.use('/api/missions', require('./routes/missions'));
 app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/ads', require('./routes/ads'));
 app.use('/api/business', require('./routes/business'));
+app.use('/api/business-subscription', require('./routes/businessSubscription'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/waitlist', require('./routes/waitlist'));
 app.use('/api/waste-requests', require('./routes/wasteRequests'));

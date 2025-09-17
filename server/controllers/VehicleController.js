@@ -6,8 +6,10 @@ class VehicleController {
   // Register new vehicle with limit check
   async registerVehicle(req, res) {
     try {
+      
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.log('❌ Erreurs de validation:', errors.array());
         return res.status(400).json({
           success: false,
           message: 'Validation errors',
@@ -18,18 +20,24 @@ class VehicleController {
       const { licensePlate, brand, model, year, capacity, vehicleType } = req.body;
       const ownerId = req.user._id;
       const user = req.user;
+      
+      console.log('🔑 Owner ID:', ownerId);
+      console.log('👥 User type:', user.userType);
 
       // Check vehicle limit based on user type
       const existingVehicles = await Vehicle.countDocuments({ ownerId });
+      console.log('🔢 Véhicules existants:', existingVehicles);
       const maxVehicles = user.userType === 'collectam-business' ? Infinity : 2;
+      console.log('📊 Limite max:', maxVehicles);
 
       if (existingVehicles >= maxVehicles) {
         return res.status(403).json({
           success: false,
-          message: `Limite de véhicules atteinte. Maximum ${maxVehicles} véhicules pour votre type de compte.`,
+          message: `Vous avez atteint la limite de ${maxVehicles} véhicules. Créez un compte Collectam Business pour enregistrer plus de véhicules.`,
           upgrade: user.userType !== 'collectam-business' ? {
-            message: 'Passez à Collectam Business pour enregistrer plus de véhicules',
-            action: 'upgrade_to_business'
+            message: 'Créez un compte Collectam Business pour enregistrer plus de véhicules',
+            action: 'upgrade_to_business',
+            requiresLogout: true
           } : null
         });
       }
@@ -53,7 +61,9 @@ class VehicleController {
         ownerId
       });
 
+      console.log('💾 Sauvegarde en cours...');
       await vehicle.save();
+      console.log('🎉 Véhicule sauvegardé avec succès');
 
       res.status(201).json({
         success: true,
@@ -65,6 +75,7 @@ class VehicleController {
       });
 
     } catch (error) {
+      console.error('💥 Erreur dans registerVehicle:', error);
       res.status(500).json({
         success: false,
         message: 'Erreur interne du serveur',
@@ -73,7 +84,7 @@ class VehicleController {
     }
   }
 
-  // Get all vehicles
+  // Get all vehicles for admin
   async getAllVehicles(req, res) {
     try {
       const { page = 1, limit = 10, status } = req.query;

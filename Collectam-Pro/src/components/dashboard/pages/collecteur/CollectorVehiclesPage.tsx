@@ -54,6 +54,8 @@ export default function VehiclesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeMessage, setUpgradeMessage] = useState('');
   
   const [formData, setFormData] = useState({
     licensePlate: '',
@@ -131,13 +133,9 @@ export default function VehiclesPage() {
         fetchVehicles();
       } else {
         if (response.status === 403 && result.upgrade) {
-          toast.error(result.message, {
-            description: result.upgrade.message,
-            action: {
-              label: "Passer à Business",
-              onClick: () => console.log("Upgrade to business")
-            }
-          });
+          // Show upgrade modal with logout option
+          setShowUpgradeModal(true);
+          setUpgradeMessage(result.message);
         } else {
           toast.error(result.message || 'Erreur lors de l\'enregistrement');
         }
@@ -209,6 +207,21 @@ export default function VehiclesPage() {
     
     const statusInfo = statusMap[status as keyof typeof statusMap] || statusMap.actif;
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+  };
+
+  const handleLogoutAndUpgrade = () => {
+    // Show loading state immediately
+    toast.success("Redirection vers l'inscription Business...");
+    
+    // Clear all authentication data
+    localStorage.clear();
+    
+    // Clear cookies
+    document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    
+    // Immediate redirect
+    window.location.href = '/auth/v2/register';
   };
 
   return (
@@ -337,8 +350,18 @@ export default function VehiclesPage() {
       {limit.upgradeRequired && (
         <Alert>
           <Crown className="h-4 w-4" />
-          <AlertDescription>
-            Vous avez atteint la limite de 2 véhicules. Passez à <strong>Collectam Business</strong> pour enregistrer plus de véhicules.
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              Vous avez atteint la limite de 2 véhicules. Creez un compte <strong>Collectam Business</strong> pour enregistrer plus de véhicules.
+            </span>
+            <Button 
+              onClick={handleLogoutAndUpgrade} 
+              className="ml-4 bg-yellow-600 hover:bg-yellow-700"
+              size="sm"
+            >
+              <Crown className="h-4 w-4 mr-2" />
+              Passer à Collectam Business
+            </Button>
           </AlertDescription>
         </Alert>
       )}
@@ -419,6 +442,39 @@ export default function VehiclesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Upgrade Modal */}
+      <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-yellow-500" />
+              Limite atteinte
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {upgradeMessage}
+              </AlertDescription>
+            </Alert>
+            <p className="text-sm text-muted-foreground">
+              Pour continuer à ajouter des véhicules, vous devez créer un compte Collectam Business. 
+              Vous serez déconnecté et redirigé vers la page d'inscription Business.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowUpgradeModal(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleLogoutAndUpgrade} className="bg-yellow-600 hover:bg-yellow-700">
+                <Crown className="h-4 w-4 mr-2" />
+                Créer un compte Business
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

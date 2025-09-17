@@ -81,12 +81,27 @@ const userSchema = new mongoose.Schema({
   subscription: {
     plan: {
       type: String,
-      enum: ['basic', 'premium'],
+      enum: ['basic', 'business-monthly', 'business-quarterly', 'business-yearly'],
       default: 'basic'
     },
     expiry: {
       type: Date,
       default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    },
+    price: {
+      type: Number,
+      default: 0
+    },
+    currency: {
+      type: String,
+      default: 'XOF'
+    },
+    startDate: {
+      type: Date
+    },
+    isActive: {
+      type: Boolean,
+      default: true
     }
   },
   preferences: {

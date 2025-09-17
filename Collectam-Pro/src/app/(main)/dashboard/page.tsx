@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthService } from "@/lib/auth";
+import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
 import { UserDashboard } from "@/components/dashboard/UserDashboard";
 import { EnterpriseDashboard } from "@/components/dashboard/EnterpriseDashboard";
 import { CollectorDashboard } from "@/components/dashboard/CollectorDashboard";
+import BusinessDashboard from "@/components/dashboard/BusinessDashboard";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -25,15 +27,11 @@ export default function DashboardPage() {
       setUser(currentUser);
       setLoading(false);
 
-      // Only redirect for admin and org_admin roles
-      switch (currentUser.role) {
-        case 'admin':
-          router.push('/dashboard/admin');
-          break;
-        case 'org_admin':
-          router.push('/dashboard/org-admin');
-          break;
-        // collector and user stay on main dashboard page
+      // Redirect based on userType and role
+      const dashboardRoute = AuthService.getDashboardRoute();
+      if (dashboardRoute !== '/dashboard') {
+        router.push(dashboardRoute);
+        return;
       }
     };
 
@@ -62,15 +60,24 @@ export default function DashboardPage() {
   }
 
   // Render appropriate dashboard based on user role and type
-  switch (user.role) {
-    case 'collector':
+  switch (user.userType) {
+    case 'collectam-business':
+      return <BusinessDashboard />;
+    case 'collecteur':
       return <CollectorDashboard />;
-    case 'user':
-      if (user.userType === 'entreprise') {
-        return <EnterpriseDashboard />;
-      }
+    case 'entreprise':
+      return <EnterpriseDashboard />;
+    case 'menage':
       return <UserDashboard />;
     default:
-      return <UserDashboard />;
+      // Fallback based on role
+      switch (user.role) {
+        case 'collector':
+          return <CollectorDashboard />;
+        case 'user':
+          return <UserDashboard />;
+        default:
+          return <UserDashboard />;
+      }
   }
 }

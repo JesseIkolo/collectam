@@ -13,7 +13,7 @@ class AuthService {
     const accessToken = jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '15m', algorithm: 'HS256' }
+      { expiresIn: '24h', algorithm: 'HS256' }
     );
 
     const refreshToken = jwt.sign(
@@ -74,7 +74,7 @@ class AuthService {
       const accessToken = jwt.sign(
         payload,
         process.env.JWT_SECRET,
-        { expiresIn: '15m', algorithm: 'HS256' }
+        { expiresIn: '24h', algorithm: 'HS256' }
       );
 
       return { accessToken };

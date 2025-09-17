@@ -60,10 +60,18 @@ export function RegisterForm() {
       const result = await AuthService.register(registerData);
       
       if (result.success) {
+        const userData = result.data?.user;
+        
+        // Special handling for collectam-business users
+        if (data.userType === 'collectam-business') {
+          toast.success("Account created! Please choose your Business plan...");
+          router.push('/business-pricing');
+          return;
+        }
+        
         toast.success("Registration successful! Redirecting to dashboard...");
         
         // Get user data to determine correct dashboard
-        const userData = result.data?.user;
         if (userData?.role) {
           switch (userData.role) {
             case 'admin':

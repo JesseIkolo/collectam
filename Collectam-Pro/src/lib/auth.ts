@@ -54,8 +54,8 @@ export class AuthService {
         localStorage.setItem('user', JSON.stringify(result.data.user));
         
         // Also store in cookies for middleware
-        document.cookie = `accessToken=${result.data.accessToken}; path=/; max-age=${30 * 24 * 60 * 60}`; // 30 days
-        document.cookie = `refreshToken=${result.data.refreshToken}; path=/; max-age=${30 * 24 * 60 * 60}`;
+        document.cookie = `accessToken=${result.data.accessToken}; path=/; max-age=${24 * 60 * 60}`; // 24 hours
+        document.cookie = `refreshToken=${result.data.refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 days
       }
 
       return result;
@@ -87,8 +87,8 @@ export class AuthService {
         localStorage.setItem('user', JSON.stringify(result.data.user));
         
         // Also store in cookies for middleware
-        document.cookie = `accessToken=${result.data.accessToken}; path=/; max-age=${30 * 24 * 60 * 60}`; // 30 days
-        document.cookie = `refreshToken=${result.data.refreshToken}; path=/; max-age=${30 * 24 * 60 * 60}`;
+        document.cookie = `accessToken=${result.data.accessToken}; path=/; max-age=${24 * 60 * 60}`; // 24 hours
+        document.cookie = `refreshToken=${result.data.refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 days
       }
 
       return result;
@@ -133,5 +133,34 @@ export class AuthService {
   static isAdmin(): boolean {
     const user = this.getUser();
     return user && (user.role === 'admin' || user.role === 'org_admin');
+  }
+
+  static getDashboardRoute(): string {
+    const user = this.getUser();
+    if (!user) return '/auth/v2/login';
+
+    // Redirect based on userType first, then role
+    switch (user.userType) {
+      case 'collectam-business':
+        return '/dashboard/business';
+      case 'collecteur':
+        return '/dashboard/collector';
+      case 'menage':
+        return '/dashboard/user';
+      case 'entreprise':
+        return '/dashboard/user';
+      default:
+        // Fallback based on role
+        switch (user.role) {
+          case 'admin':
+            return '/dashboard/admin';
+          case 'org_admin':
+            return '/dashboard/org-admin';
+          case 'collector':
+            return '/dashboard/collector';
+          default:
+            return '/dashboard'; // Stay on main dashboard for fallback
+        }
+    }
   }
 }

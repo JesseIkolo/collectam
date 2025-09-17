@@ -9,15 +9,23 @@ import { Badge } from "@/components/ui/badge";
 import { QrCode, Camera, AlertTriangle, Play, Pause, Truck, Award, MapPin, Navigation, Clock, CheckCircle, Route, Fuel, Users, Package } from "lucide-react";
 import { dashboardService, DashboardData } from "@/services/DashboardService";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import CollectorMapPage from "./pages/collecteur/CollectorMapPage";
+import CollectorScannerPage from "./pages/collecteur/CollectorScannerPage";
+import CollectorVehiclesPage from "./pages/collecteur/CollectorVehiclesPage";
+import CollectorProfilePage from "./pages/collecteur/CollectorProfilePage";
+import CollectorHistoryPage from "./pages/collecteur/CollectorHistoryPage";
 
 export function CollectorDashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
 
   const loadDashboardData = async () => {
     try {
@@ -72,7 +80,7 @@ export function CollectorDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Dashboard Collecteur 🚛
+            Dashboard Collecteur 
           </h1>
           <p className="text-muted-foreground">
             Gérez vos tournées et missions de collecte
