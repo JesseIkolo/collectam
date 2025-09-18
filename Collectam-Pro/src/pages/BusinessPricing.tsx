@@ -118,6 +118,8 @@ const BusinessPricing: React.FC = () => {
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         userData.userType = 'collectam-business';
         userData.subscription = data.data.subscription;
+        console.log('💾 Saving subscription data:', data.data.subscription);
+        console.log('💾 Updated user data:', userData);
         localStorage.setItem('user', JSON.stringify(userData));
 
         toast.success("Votre abonnement Business a été activé avec succès");

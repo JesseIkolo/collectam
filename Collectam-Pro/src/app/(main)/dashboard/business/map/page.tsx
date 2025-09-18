@@ -435,12 +435,12 @@ export default function MapPage() {
 
             <div className="space-y-2">
               <Label>Suivi Véhicule</Label>
-              <Select value={selectedVehicle || ''} onValueChange={setSelectedVehicle}>
+              <Select value={selectedVehicle || 'none'} onValueChange={(value) => setSelectedVehicle(value === 'none' ? null : value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un véhicule" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun</SelectItem>
+                  <SelectItem value="none">Aucun</SelectItem>
                   {vehicles.map((vehicle) => (
                     <SelectItem key={vehicle.id} value={vehicle.id}>
                       {vehicle.licensePlate}

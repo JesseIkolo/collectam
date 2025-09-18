@@ -12,6 +12,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AuthService } from "@/lib/auth";
+import { forceUserTypePreservation, getDashboardRouteByUserType } from "@/lib/user-utils";
+import { saveRegistrationData } from "@/lib/user-type-fixer";
 
 const registerSchema = z.object({
   invitationToken: z.string().optional(),
@@ -57,10 +59,17 @@ export function RegisterForm() {
     
     try {
       const { confirmPassword, ...registerData } = data;
+      
+      // Save registration data for userType fixing
+      saveRegistrationData(data);
+      
       const result = await AuthService.register(registerData);
       
       if (result.success) {
         const userData = result.data?.user;
+        
+        // CRITICAL: Force userType preservation
+        forceUserTypePreservation(userData, data.userType);
         
         // Special handling for collectam-business users
         if (data.userType === 'collectam-business') {
@@ -71,26 +80,10 @@ export function RegisterForm() {
         
         toast.success("Registration successful! Redirecting to dashboard...");
         
-        // Get user data to determine correct dashboard
-        if (userData?.role) {
-          switch (userData.role) {
-            case 'admin':
-              router.push('/dashboard/admin');
-              break;
-            case 'org_admin':
-              router.push('/dashboard/org-admin');
-              break;
-            case 'collector':
-              router.push('/dashboard/collector');
-              break;
-            case 'user':
-            default:
-              router.push('/dashboard/user');
-              break;
-          }
-        } else {
-          router.push('/dashboard/user');
-        }
+        // Use our utility function to get the correct dashboard route
+        const dashboardRoute = getDashboardRouteByUserType(data.userType, userData?.role);
+        console.log('🔍 Register Form - Dashboard route:', dashboardRoute);
+        router.push(dashboardRoute);
       } else {
         toast.error(result.message || "Registration failed");
       }

@@ -15,18 +15,22 @@ import {
   Banknote,
   Gauge,
   GraduationCap,
-  Trash2,
-  MapPin,
-  Home,
-  User,
-  Award,
-  History,
-  QrCode,
-  Truck,
   BarChart3,
+  Home,
+  MapPin,
+  Truck,
   Activity,
   CreditCard,
   Settings,
+  Trash2,
+  User,
+  QrCode,
+  History,
+  Award,
+  UserCheck,
+  Building,
+  Shield,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -85,6 +89,48 @@ export const getSidebarItems = (userRole: string = 'user', userType: string = 'm
         title: "Facturation",
         url: `${basePath}/billing`,
         icon: CreditCard,
+      },
+      {
+        title: "Paramètres",
+        url: `${basePath}/settings`,
+        icon: Settings,
+      },
+    ];
+  }
+
+  // Enterprise users get enterprise dashboard
+  if (userType === 'entreprise') {
+    const basePath = '/dashboard/enterprise';
+    return [
+      {
+        title: "Vue d'ensemble",
+        url: basePath,
+        icon: BarChart3,
+      },
+      {
+        title: "Gestion des Déchets",
+        url: `${basePath}/waste-collection`,
+        icon: Trash2,
+      },
+      {
+        title: "Suivi Temps Réel",
+        url: `${basePath}/map`,
+        icon: MapPin,
+      },
+      {
+        title: "Analytics",
+        url: `${basePath}/analytics`,
+        icon: Activity,
+      },
+      {
+        title: "Conformité",
+        url: `${basePath}/compliance`,
+        icon: Shield,
+      },
+      {
+        title: "Rapports",
+        url: `${basePath}/reports`,
+        icon: FileText,
       },
       {
         title: "Paramètres",

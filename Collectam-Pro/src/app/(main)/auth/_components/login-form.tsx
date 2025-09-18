@@ -41,28 +41,9 @@ export function LoginForm() {
         toast.success("Login successful! Redirecting to dashboard...");
         // Small delay to ensure cookies are set before redirect
         setTimeout(() => {
-          const user = result.data?.user;
-          if (user) {
-            // Redirect directly to role-specific dashboard
-            switch (user.role) {
-              case 'admin':
-                window.location.href = "/dashboard/admin";
-                break;
-              case 'org_admin':
-                window.location.href = "/dashboard/org-admin";
-                break;
-              case 'collector':
-                window.location.href = "/dashboard/collector";
-                break;
-              case 'user':
-                window.location.href = "/dashboard/user";
-                break;
-              default:
-                window.location.href = "/dashboard";
-            }
-          } else {
-            window.location.href = "/dashboard";
-          }
+          // Use AuthService to get the correct dashboard route based on userType
+          const dashboardRoute = AuthService.getDashboardRoute();
+          window.location.href = dashboardRoute;
         }, 100);
       } else {
         toast.error(result.message || "Login failed");

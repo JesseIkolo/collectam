@@ -16,9 +16,11 @@ interface WasteRequestFormData {
   description: string;
   estimatedWeight: number;
   address: string;
-  urgency: "low" | "medium" | "high";
+  urgency: "low" | "medium" | "high" | "urgent";
   preferredDate: string;
   preferredTime: string;
+  contactPhone?: string;
+  specialInstructions?: string;
 }
 
 interface CreateWasteRequestFormProps {
@@ -35,6 +37,8 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
     urgency: "medium",
     preferredDate: "",
     preferredTime: "",
+    contactPhone: "",
+    specialInstructions: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,6 +82,8 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
         urgency: "medium",
         preferredDate: "",
         preferredTime: "",
+        contactPhone: "",
+        specialInstructions: "",
       });
     } catch (error) {
       toast.error("Erreur lors de la création de la demande");
@@ -123,14 +129,17 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
                     <SelectValue placeholder="Sélectionner le type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="plastic">Plastique</SelectItem>
-                    <SelectItem value="paper">Papier</SelectItem>
-                    <SelectItem value="glass">Verre</SelectItem>
-                    <SelectItem value="metal">Métal</SelectItem>
-                    <SelectItem value="electronic">Électronique</SelectItem>
-                    <SelectItem value="organic">Organique</SelectItem>
-                    <SelectItem value="hazardous">Dangereux</SelectItem>
-                    <SelectItem value="mixed">Mixte</SelectItem>
+                    <SelectItem value="Papier/Carton">Papier/Carton</SelectItem>
+                    <SelectItem value="Plastique">Plastique</SelectItem>
+                    <SelectItem value="Verre">Verre</SelectItem>
+                    <SelectItem value="Métal">Métal</SelectItem>
+                    <SelectItem value="Organique">Organique</SelectItem>
+                    <SelectItem value="Électronique">Électronique</SelectItem>
+                    <SelectItem value="Textile">Textile</SelectItem>
+                    <SelectItem value="Bois">Bois</SelectItem>
+                    <SelectItem value="Déchets Dangereux">Déchets Dangereux</SelectItem>
+                    <SelectItem value="Encombrants">Encombrants</SelectItem>
+                    <SelectItem value="Autre">Autre</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -177,7 +186,7 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
                 <Label htmlFor="urgency">Urgence</Label>
                 <Select
                   value={formData.urgency}
-                  onValueChange={(value: "low" | "medium" | "high") => handleInputChange("urgency", value)}
+                  onValueChange={(value: "low" | "medium" | "high" | "urgent") => handleInputChange("urgency", value)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -186,6 +195,7 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
                     <SelectItem value="low">Faible</SelectItem>
                     <SelectItem value="medium">Moyenne</SelectItem>
                     <SelectItem value="high">Élevée</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -219,6 +229,28 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contactPhone">Téléphone de contact (optionnel)</Label>
+              <Input
+                id="contactPhone"
+                type="tel"
+                value={formData.contactPhone || ""}
+                onChange={(e) => handleInputChange("contactPhone", e.target.value)}
+                placeholder="+221 XX XXX XX XX"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="specialInstructions">Instructions spéciales (optionnel)</Label>
+              <Textarea
+                id="specialInstructions"
+                value={formData.specialInstructions || ""}
+                onChange={(e) => handleInputChange("specialInstructions", e.target.value)}
+                placeholder="Instructions particulières pour la collecte..."
+                rows={2}
+              />
             </div>
 
             <div className="flex gap-4 pt-4">

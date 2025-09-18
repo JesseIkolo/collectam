@@ -16,6 +16,7 @@ import {
   CheckCircle
 } from "lucide-react";
 import Link from "next/link";
+import { AuthService } from '@/lib/auth';
 
 // Import des pages
 import FleetPage from "./fleet/page";
@@ -43,11 +44,23 @@ export default function BusinessDashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      // Simuler des données pour l'instant
+      // Récupérer les données réelles de l'utilisateur
+      const currentUser = AuthService.getUser();
+      const userSubscription = currentUser?.subscription;
+      
+      // Mapping des plans
+      const planMapping = {
+        'business-monthly': 'Mensuel',
+        'business-quarterly': 'Trimestriel',
+        'business-yearly': 'Annuel'
+      };
+      
       setTimeout(() => {
         setDashboardData({
           subscription: {
-            plan: 'Trimestriel',
+            plan: userSubscription?.planId ? 
+              planMapping[userSubscription.planId as keyof typeof planMapping] || 'Mensuel' :
+              'Mensuel',
             status: 'active',
             daysLeft: 45,
             expiresAt: '2024-04-15'

@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { AuthService } from '@/lib/auth';
 
 interface Subscription {
   id: string;
@@ -35,6 +36,15 @@ interface Invoice {
   downloadUrl?: string;
 }
 
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  period: string;
+  popular?: boolean;
+  features: string[];
+}
+
 interface BillingData {
   subscription: Subscription;
   invoices: Invoice[];
@@ -47,6 +57,51 @@ interface BillingData {
 export default function BillingPage() {
   const [billingData, setBillingData] = useState<BillingData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showPlanChange, setShowPlanChange] = useState(false);
+  const [changingPlan, setChangingPlan] = useState<string | null>(null);
+
+  // Plans disponibles (synchronisés avec BusinessPricing.tsx)
+  const availablePlans: Plan[] = [
+    {
+      id: 'business-monthly',
+      name: 'Mensuel',
+      price: 10000,
+      period: '1 mois',
+      features: [
+        'Véhicules illimités',
+        'Collecteurs illimités', 
+        'Tableau de bord avancé',
+        'Support prioritaire'
+      ]
+    },
+    {
+      id: 'business-quarterly',
+      name: 'Trimestriel',
+      price: 25000,
+      period: '3 mois',
+      popular: true,
+      features: [
+        'Véhicules illimités',
+        'Collecteurs illimités',
+        'Tableau de bord avancé', 
+        'Support prioritaire',
+        'Économie de 5 000 XOF'
+      ]
+    },
+    {
+      id: 'business-yearly',
+      name: 'Annuel',
+      price: 72000,
+      period: '1 an',
+      features: [
+        'Véhicules illimités',
+        'Collecteurs illimités',
+        'Tableau de bord avancé',
+        'Support prioritaire',
+        'Économie de 48 000 XOF'
+      ]
+    }
+  ];
 
   useEffect(() => {
     fetchBillingData();
@@ -54,18 +109,57 @@ export default function BillingPage() {
 
   const fetchBillingData = async () => {
     try {
-      // Simuler des données pour l'instant
+      // Récupérer les données réelles de l'utilisateur
+      const currentUser = AuthService.getUser();
+      console.log('🔍 Current user data:', currentUser);
+      const userSubscription = currentUser?.subscription;
+      console.log('🔍 User subscription:', userSubscription);
+      
+      // Debug: Vérifier le localStorage brut
+      const rawUserData = localStorage.getItem('user');
+      console.log('🔍 Raw localStorage user data:', rawUserData);
+      
+      // Si pas de planId dans subscription, essayer de le déduire du localStorage
+      let actualPlanId = userSubscription?.planId;
+      if (!actualPlanId && rawUserData) {
+        try {
+          const parsedData = JSON.parse(rawUserData);
+          actualPlanId = parsedData?.subscription?.planId;
+          console.log('🔍 Plan ID from raw localStorage:', actualPlanId);
+        } catch (e) {
+          console.warn('⚠️ Erreur parsing localStorage:', e);
+        }
+      }
+      
+      // Mapping des plans depuis BusinessPricing
+      const planMapping = {
+        'business-monthly': { name: 'Mensuel', price: 10000, period: '1 mois' },
+        'business-quarterly': { name: 'Trimestriel', price: 25000, period: '3 mois' },
+        'business-yearly': { name: 'Annuel', price: 72000, period: '1 an' }
+      };
+      
       setTimeout(() => {
+        console.log('🔍 Plan ID trouvé:', userSubscription?.planId);
+        console.log('🔍 Subscription complète:', userSubscription);
+        
+        // Utiliser le planId trouvé (soit depuis subscription, soit depuis localStorage)
+        const finalPlanId = actualPlanId || 'business-monthly';
+        console.log('🔍 Final Plan ID utilisé:', finalPlanId);
+        
+        const planInfo = planMapping[finalPlanId as keyof typeof planMapping] || planMapping['business-monthly'];
+        
+        console.log('📋 Plan info sélectionné:', planInfo);
+        
         setBillingData({
           subscription: {
-            id: 'sub_123',
-            planName: 'Trimestriel',
-            price: 25000,
-            period: '3 mois',
-            status: 'active',
-            startDate: '2024-01-15',
-            endDate: '2024-04-15',
-            autoRenew: true
+            id: userSubscription?.id || 'sub_default',
+            planName: planInfo?.name || 'Mensuel',
+            price: planInfo?.price || 10000,
+            period: planInfo?.period || '1 mois',
+            status: userSubscription?.status || 'active',
+            startDate: userSubscription?.startDate || '2024-01-15',
+            endDate: userSubscription?.endDate || '2024-04-15',
+            autoRenew: userSubscription?.autoRenew ?? true
           },
           invoices: [
             {
@@ -137,15 +231,124 @@ export default function BillingPage() {
   };
 
   const handleCancelSubscription = async () => {
-    if (confirm('Êtes-vous sûr de vouloir annuler votre abonnement ?')) {
+    const confirmMessage = `⚠️ ATTENTION - Annulation d'abonnement
+
+Êtes-vous sûr de vouloir annuler votre abonnement ?
+
+Conséquences :
+• Votre abonnement restera actif jusqu'à la fin de la période payée
+• Vous perdrez l'accès aux fonctionnalités Business après expiration
+• Aucun remboursement ne sera effectué pour la période en cours
+• Vous pourrez vous réabonner à tout moment
+
+Cette action est irréversible.`;
+
+    if (confirm(confirmMessage)) {
       try {
-        // API call to cancel subscription
-        toast.success("Abonnement annulé avec succès");
-        fetchBillingData();
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+          throw new Error('Vous devez être connecté pour annuler votre abonnement');
+        }
+
+        console.log('🚫 Tentative d\'annulation d\'abonnement...');
+        
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const response = await fetch(`${apiUrl}/api/business-subscription/cancel`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Mettre à jour les données utilisateur
+          const userData = JSON.parse(localStorage.getItem('user') || '{}');
+          if (userData.subscription) {
+            userData.subscription.status = 'cancelled';
+            userData.subscription.autoRenew = false;
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
+
+          toast.success("Abonnement annulé avec succès. Il restera actif jusqu'à la fin de la période payée.");
+          fetchBillingData(); // Recharger les données
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Erreur lors de l\'annulation');
+        }
       } catch (error) {
-        toast.error("Erreur lors de l'annulation");
+        console.error('❌ Erreur annulation:', error);
+        toast.error(error instanceof Error ? error.message : "Erreur lors de l'annulation de l'abonnement");
       }
     }
+  };
+
+  const handleChangePlan = async (newPlanId: string) => {
+    setChangingPlan(newPlanId);
+    
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('Aucun token d\'authentification trouvé. Veuillez vous reconnecter.');
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/business-subscription/change-plan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ newPlanId })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Mettre à jour les données utilisateur dans localStorage
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        userData.subscription = data.data.subscription;
+        localStorage.setItem('user', JSON.stringify(userData));
+
+        toast.success("Votre plan a été changé avec succès");
+        setShowPlanChange(false);
+        fetchBillingData(); // Recharger les données
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors du changement de plan');
+      }
+    } catch (error) {
+      console.error('Plan change error:', error);
+      toast.error(error instanceof Error ? error.message : "Erreur lors du changement de plan");
+    } finally {
+      setChangingPlan(null);
+    }
+  };
+
+  const getCurrentPlanId = () => {
+    const currentUser = AuthService.getUser();
+    
+    // Essayer plusieurs sources comme dans fetchBillingData
+    let planId = currentUser?.subscription?.planId;
+    
+    if (!planId) {
+      const rawUserData = localStorage.getItem('user');
+      if (rawUserData) {
+        try {
+          const parsedData = JSON.parse(rawUserData);
+          planId = parsedData?.subscription?.planId;
+        } catch (e) {
+          console.warn('⚠️ Erreur parsing localStorage dans getCurrentPlanId:', e);
+        }
+      }
+    }
+    
+    const finalPlanId = planId || 'business-monthly';
+    console.log('🔍 getCurrentPlanId - Plan ID final:', finalPlanId);
+    console.log('🔍 Raw user data check:', currentUser);
+    return finalPlanId;
   };
 
   const toggleAutoRenew = async () => {
@@ -218,11 +421,19 @@ export default function BillingPage() {
               <span>{billingData?.subscription.autoRenew ? 'Activé' : 'Désactivé'}</span>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-2 pt-4">
-              <Button variant="outline" size="sm" onClick={toggleAutoRenew} className="w-full sm:w-auto">
-                {billingData?.subscription.autoRenew ? 'Désactiver' : 'Activer'} le renouvellement
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleCancelSubscription} className="w-full sm:w-auto">
+            <div className="flex flex-col gap-2 pt-4">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button variant="default" size="sm" onClick={() => {
+                  const plansTab = document.querySelector('[value="plans"]') as HTMLElement;
+                  plansTab?.click();
+                }} className="w-full sm:w-auto">
+                  Changer de Plan
+                </Button>
+                <Button variant="outline" size="sm" onClick={toggleAutoRenew} className="w-full sm:w-auto text-xs sm:text-sm">
+                  {billingData?.subscription.autoRenew ? 'Désactiver' : 'Activer'} le renouvellement
+                </Button>
+              </div>
+              <Button variant="destructive" size="sm" onClick={handleCancelSubscription} className="w-full">
                 Annuler l'abonnement
               </Button>
             </div>
@@ -319,33 +530,67 @@ export default function BillingPage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-3">
-                <div className="border rounded-lg p-4 text-center">
-                  <h3 className="font-semibold mb-2">Mensuel</h3>
-                  <div className="text-2xl font-bold mb-2">10 000 XOF</div>
-                  <div className="text-sm text-muted-foreground mb-4">par mois</div>
-                  <Button variant="outline" className="w-full">
-                    Choisir ce plan
-                  </Button>
-                </div>
-                
-                <div className="border-2 border-primary rounded-lg p-4 text-center">
-                  <Badge className="mb-2">Actuel</Badge>
-                  <h3 className="font-semibold mb-2">Trimestriel</h3>
-                  <div className="text-2xl font-bold mb-2">25 000 XOF</div>
-                  <div className="text-sm text-muted-foreground mb-4">pour 3 mois</div>
-                  <Button disabled className="w-full">
-                    Plan actuel
-                  </Button>
-                </div>
-                
-                <div className="border rounded-lg p-4 text-center">
-                  <h3 className="font-semibold mb-2">Annuel</h3>
-                  <div className="text-2xl font-bold mb-2">72 000 XOF</div>
-                  <div className="text-sm text-muted-foreground mb-4">par an</div>
-                  <Button className="w-full">
-                    Choisir ce plan
-                  </Button>
-                </div>
+                {availablePlans.map((plan) => {
+                  const currentPlanId = getCurrentPlanId();
+                  const isCurrentPlan = currentPlanId === plan.id;
+                  const isChanging = changingPlan === plan.id;
+                  
+                  console.log(`🔍 Plan ${plan.name} (${plan.id}): isCurrentPlan=${isCurrentPlan}, currentPlanId=${currentPlanId}, popular=${plan.popular}, shouldShowGrayRing=${plan.popular && !isCurrentPlan}`);
+                  
+                  return (
+                    <div 
+                      key={plan.id}
+                      className={`border rounded-lg p-4 text-center ${
+                        isCurrentPlan ? 'border-2 border-blue-500 bg-blue-50 ring-2 ring-blue-500' : ''
+                      } ${plan.popular && !isCurrentPlan ? 'ring-2 ring-gray-400 border-gray-300' : ''}`}
+                    >
+                      <div className="mb-2 flex justify-center gap-2">
+                        {isCurrentPlan && <Badge variant="secondary">Plan Actuel</Badge>}
+                        {plan.popular && <Badge variant="default">Populaire</Badge>}
+                      </div>
+                      
+                      <h3 className="font-semibold mb-2">{plan.name}</h3>
+                      <div className="text-2xl font-bold mb-1">{formatPrice(plan.price)}</div>
+                      <div className="text-sm text-muted-foreground mb-4">par {plan.period}</div>
+                      
+                      <ul className="text-sm text-left mb-4 space-y-1">
+                        {plan.features.map((feature, index) => (
+                          <li key={index} className="flex items-center gap-2">
+                            <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      
+                      <Button 
+                        variant={isCurrentPlan ? "secondary" : "default"}
+                        className="w-full"
+                        disabled={isCurrentPlan || isChanging}
+                        onClick={() => handleChangePlan(plan.id)}
+                      >
+                        {isChanging ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Changement...
+                          </>
+                        ) : isCurrentPlan ? (
+                          "Plan Actuel"
+                        ) : (
+                          "Choisir ce plan"
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-2">💡 Information importante</h4>
+                <p className="text-sm text-blue-800">
+                  Le changement de plan prendra effet immédiatement. 
+                  Si vous passez à un plan plus cher, la différence sera facturée au prorata. 
+                  Si vous passez à un plan moins cher, le crédit sera appliqué à votre prochaine facture.
+                </p>
               </div>
             </CardContent>
           </Card>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthService } from "@/lib/auth";
+import { fixUserTypeFromRegistration } from "@/lib/user-type-fixer";
 import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
 import { UserDashboard } from "@/components/dashboard/UserDashboard";
 import { EnterpriseDashboard } from "@/components/dashboard/EnterpriseDashboard";
@@ -16,6 +17,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const checkAuth = () => {
+      // Fix userType from registration if needed
+      fixUserTypeFromRegistration();
+      
       const currentUser = AuthService.getUser();
       console.log('🔍 Dashboard - User role:', currentUser?.role, 'userType:', currentUser?.userType);
       
@@ -29,7 +33,10 @@ export default function DashboardPage() {
 
       // Redirect based on userType and role
       const dashboardRoute = AuthService.getDashboardRoute();
+      console.log('🔍 Dashboard route determined:', dashboardRoute);
+      
       if (dashboardRoute !== '/dashboard') {
+        console.log('🔄 Redirecting to:', dashboardRoute);
         router.push(dashboardRoute);
         return;
       }

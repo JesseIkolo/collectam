@@ -4,8 +4,47 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 // Fonction utilitaire pour mapper les types de déchets du frontend vers le backend
 const mapWasteType = (frontendType: string): string => {
-  // Les valeurs sont maintenant directement compatibles avec le backend
-  return frontendType;
+  const wasteTypeMapping: { [key: string]: string } = {
+    'Papier/Carton': 'paper',
+    'Plastique': 'plastic',
+    'Verre': 'glass',
+    'Métal': 'metal',
+    'Organique': 'organic',
+    'Électronique': 'electronic',
+    'Textile': 'textile',
+    'Bois': 'wood',
+    'Déchets Dangereux': 'hazardous',
+    'Encombrants': 'bulky',
+    'Autre': 'other'
+  };
+  
+  const mappedType = wasteTypeMapping[frontendType];
+  if (!mappedType) {
+    console.warn(`⚠️ Type de déchet non mappé: ${frontendType}, utilisation de 'other' par défaut`);
+    return 'other';
+  }
+  
+  console.log(`🔄 Mapping: ${frontendType} → ${mappedType}`);
+  return mappedType;
+};
+
+// Fonction inverse pour mapper les types de déchets du backend vers le frontend
+const mapWasteTypeFromBackend = (backendType: string): string => {
+  const reverseMapping: { [key: string]: string } = {
+    'paper': 'Papier/Carton',
+    'plastic': 'Plastique',
+    'glass': 'Verre',
+    'metal': 'Métal',
+    'organic': 'Organique',
+    'electronic': 'Électronique',
+    'textile': 'Textile',
+    'wood': 'Bois',
+    'hazardous': 'Déchets Dangereux',
+    'bulky': 'Encombrants',
+    'other': 'Autre'
+  };
+  
+  return reverseMapping[backendType] || backendType;
 };
 
 // Fonction pour formater l'heure au format HH:MM attendu par l'API
@@ -84,11 +123,20 @@ export function WasteRequestProvider({ children }: { children: ReactNode }) {
   const [wasteRequests, setWasteRequests] = useState<WasteRequestData[]>(initialMockData);
 
   const addWasteRequest = async (requestData: Omit<WasteRequestData, 'id' | 'createdAt' | 'status'>) => {
+    console.log('🗑️ Tentative de création de demande:', requestData);
+    
     try {
+      // Récupérer le token d'authentification
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        console.warn('⚠️ Aucun token d\'authentification trouvé');
+        throw new Error('Vous devez être connecté pour créer une demande');
+      }
+
       // Appel API pour sauvegarder en BDD
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      console.log('Tentative d\'appel API:', `${apiUrl}/api/waste-requests`);
-      console.log('Données envoyées:', {
+      console.log('🌐 Tentative d\'appel API:', `${apiUrl}/api/waste-requests`);
+      console.log('📤 Données envoyées:', {
         wasteType: mapWasteType(requestData.wasteType),
         description: requestData.description,
         estimatedWeight: requestData.estimatedWeight,
@@ -102,7 +150,7 @@ export function WasteRequestProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           wasteType: mapWasteType(requestData.wasteType),
@@ -160,12 +208,16 @@ export function WasteRequestProvider({ children }: { children: ReactNode }) {
         };
         
         setWasteRequests(prev => [newRequest, ...prev]);
+        console.log(' Demande ajoutée au contexte:', newRequest);
         return newRequest;
       } else {
-        throw new Error('Échec de la création de la demande');
+        const errorText = await response.text();
+        console.error(' Erreur API:', response.status, errorText);
+        throw new Error(`Erreur API: ${response.status} - ${errorText}`);
       }
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
+      console.error('❌ Erreur lors de la sauvegarde:', error);
+      
       // Fallback: sauvegarder localement si l'API échoue
       const newRequest: WasteRequestData = {
         ...requestData,
@@ -175,7 +227,14 @@ export function WasteRequestProvider({ children }: { children: ReactNode }) {
       };
       
       setWasteRequests(prev => [newRequest, ...prev]);
-      throw error; // Propager l'erreur pour informer l'utilisateur
+      console.log('💾 Demande sauvegardée localement (fallback):', newRequest);
+      
+      // Propager l'erreur pour informer l'utilisateur, mais avec un message plus clair
+      if (error instanceof Error) {
+        throw new Error(`Demande créée localement. Erreur serveur: ${error.message}`);
+      } else {
+        throw new Error('Demande créée localement. Impossible de contacter le serveur.');
+      }
     }
   };
 

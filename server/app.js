@@ -91,6 +91,8 @@ app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/ads', require('./routes/ads'));
 app.use('/api/business', require('./routes/business'));
 app.use('/api/business-subscription', require('./routes/businessSubscription'));
+app.use('/api/business-collectors', require('./routes/businessCollectors'));
+app.use('/api/business-vehicles', require('./routes/businessVehicles'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/waitlist', require('./routes/waitlist'));
 app.use('/api/waste-requests', require('./routes/wasteRequests'));

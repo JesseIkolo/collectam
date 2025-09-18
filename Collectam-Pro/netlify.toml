@@ -18,11 +18,7 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
-# Dashboard redirect
-[[redirects]]
-  from = "/dashboard"
-  to = "/dashboard/default"
-  status = 302
+# Dashboard redirects are handled by client-side logic
 
 # Handle authentication routes
 [[redirects]]

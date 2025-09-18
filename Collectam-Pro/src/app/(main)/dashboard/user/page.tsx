@@ -19,14 +19,16 @@ export default function UserPage() {
         return;
       }
       
+      // Redirect Enterprise users to their proper dashboard
+      if (currentUser.userType === 'entreprise') {
+        router.push('/dashboard/enterprise');
+        return;
+      }
+      
       setUserType(currentUser.userType || 'menage');
     }
   }, [router]);
 
-  // Render appropriate dashboard based on user type
-  if (userType === 'entreprise') {
-    return <EnterpriseDashboard />;
-  }
-
+  // Only render UserDashboard for regular users (menage)
   return <UserDashboard />;
 }

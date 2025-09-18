@@ -92,7 +92,9 @@ module.exports = {
                 lastName: user.lastName,
                 email: user.email,
                 role: user.role,
-                organizationId: user.organizationId
+                organizationId: user.organizationId,
+                userType: user.userType,
+                companyName: user.companyName
             };
 
             res.status(201).json({
@@ -154,7 +156,9 @@ module.exports = {
                 lastName: user.lastName,
                 email: user.email,
                 role: user.role,
-                organizationId: user.organizationId
+                organizationId: user.organizationId,
+                userType: user.userType,
+                companyName: user.companyName
             };
 
             res.status(200).json({

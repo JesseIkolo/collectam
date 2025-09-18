@@ -20,16 +20,33 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { AuthService } from '@/lib/auth';
+import { useEffect } from 'react';
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState({
-    firstName: 'Jean',
-    lastName: 'Dupont',
-    email: 'jean.dupont@example.com',
-    phone: '+33 1 23 45 67 89',
-    companyName: 'Collecte Pro SARL',
-    companyAddress: '123 Rue de la Collecte, 75001 Paris'
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    companyName: '',
+    companyAddress: ''
   });
+
+  useEffect(() => {
+    // Charger les données réelles de l'utilisateur
+    const currentUser = AuthService.getUser();
+    if (currentUser) {
+      setProfile({
+        firstName: currentUser.firstName || '',
+        lastName: currentUser.lastName || '',
+        email: currentUser.email || '',
+        phone: currentUser.phone || '',
+        companyName: currentUser.companyName || '',
+        companyAddress: currentUser.address || ''
+      });
+    }
+  }, []);
 
   const [notifications, setNotifications] = useState({
     emailNotifications: true,

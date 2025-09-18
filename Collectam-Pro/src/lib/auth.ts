@@ -137,19 +137,28 @@ export class AuthService {
 
   static getDashboardRoute(): string {
     const user = this.getUser();
+    console.log('🔍 getDashboardRoute - User data:', user);
+    
     if (!user) return '/auth/v2/login';
+
+    console.log('🔍 getDashboardRoute - userType:', user.userType, 'role:', user.role);
 
     // Redirect based on userType first, then role
     switch (user.userType) {
       case 'collectam-business':
+        console.log('✅ Redirecting to business dashboard');
         return '/dashboard/business';
       case 'collecteur':
+        console.log('✅ Redirecting to collector dashboard');
         return '/dashboard/collector';
       case 'menage':
+        console.log('✅ Redirecting to user dashboard');
         return '/dashboard/user';
       case 'entreprise':
-        return '/dashboard/user';
+        console.log('✅ Redirecting to enterprise dashboard');
+        return '/dashboard/enterprise';
       default:
+        console.log('⚠️ No userType match, checking role:', user.role);
         // Fallback based on role
         switch (user.role) {
           case 'admin':
@@ -159,6 +168,7 @@ export class AuthService {
           case 'collector':
             return '/dashboard/collector';
           default:
+            console.log('⚠️ No role match, staying on main dashboard');
             return '/dashboard'; // Stay on main dashboard for fallback
         }
     }
