@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, MapPin, Loader2, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { wasteRequestService } from "@/services/WasteRequestService";
 
 interface WasteRequestFormData {
   wasteType: string;
@@ -23,12 +26,20 @@ interface WasteRequestFormData {
   specialInstructions?: string;
 }
 
-interface CreateWasteRequestFormProps {
-  onSubmit: (data: WasteRequestFormData) => void;
-  onCancel: () => void;
+interface AssignedCollector {
+  id: string;
+  name: string;
+  phone: string;
+  distance: number;
 }
 
-export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteRequestFormProps) {
+interface CreateWasteRequestFormProps {
+  onSubmit?: (data: WasteRequestFormData) => void;
+  onCancel: () => void;
+  onSuccess?: () => void;
+}
+
+export function CreateWasteRequestForm({ onSubmit, onCancel, onSuccess }: CreateWasteRequestFormProps) {
   const [formData, setFormData] = useState<WasteRequestFormData>({
     wasteType: "",
     description: "",
@@ -42,6 +53,56 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [coordinates, setCoordinates] = useState<[number, number] | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [assignedCollector, setAssignedCollector] = useState<AssignedCollector | null>(null);
+
+  // Get user's location
+  const getUserLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("La géolocalisation n'est pas supportée par votre navigateur");
+      return;
+    }
+
+    setLocationStatus('loading');
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
+        setCoordinates(coords);
+        setLocationStatus('success');
+        toast.success("Position obtenue avec succès");
+        console.log('📍 Coordonnées obtenues:', coords);
+      },
+      (error) => {
+        console.error('❌ Erreur géolocalisation:', error);
+        setLocationStatus('error');
+        toast.error("Impossible d'obtenir votre position");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
+  };
+
+  // Mapping des types de déchets français vers anglais
+  const mapWasteType = (frontendType: string): string => {
+    const wasteTypeMapping: { [key: string]: string } = {
+      'Papier/Carton': 'paper',
+      'Plastique': 'plastic',
+      'Verre': 'glass',
+      'Métal': 'metal',
+      'Organique': 'organic',
+      'Électronique': 'electronic',
+      'Textile': 'textile',
+      'Bois': 'wood',
+      'Déchets Dangereux': 'hazardous',
+      'Encombrants': 'bulky',
+      'Autre': 'mixed'
+    };
+    
+    const mapped = wasteTypeMapping[frontendType] || 'mixed';
+    console.log('🔄 Mapping type déchet:', frontendType, '→', mapped);
+    return mapped;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,8 +131,43 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
     setIsSubmitting(true);
     
     try {
-      await onSubmit(formData);
-      toast.success("Demande de collecte créée avec succès!");
+      // Prepare data for API avec mapping des types
+      const requestData = {
+        wasteType: mapWasteType(formData.wasteType),
+        description: formData.description,
+        estimatedWeight: formData.estimatedWeight,
+        address: formData.address,
+        urgency: formData.urgency,
+        preferredDate: formData.preferredDate,
+        preferredTime: formData.preferredTime,
+        notes: formData.specialInstructions,
+        coordinates: coordinates || undefined
+      };
+
+      console.log('🗑️ Création de la demande avec les données:', requestData);
+
+      // Create request using our service
+      const result = await wasteRequestService.createRequest(requestData);
+      
+      console.log('✅ Demande créée:', result);
+      
+      // Check if a collector was assigned (from API response)
+      // The API returns assignedCollector as a separate field in the response
+      const response = result as any; // Cast to access assignedCollector field
+      if (response.assignedCollector) {
+        setAssignedCollector(response.assignedCollector);
+        toast.success(`Demande créée et assignée au collecteur ${response.assignedCollector.name} !`);
+      } else {
+        toast.success("Demande créée avec succès - en attente d'assignation");
+      }
+
+      // Call callbacks
+      if (onSubmit) {
+        onSubmit(formData);
+      }
+      if (onSuccess) {
+        onSuccess();
+      }
       
       // Reset form
       setFormData({
@@ -85,8 +181,23 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
         contactPhone: "",
         specialInstructions: "",
       });
-    } catch (error) {
-      toast.error("Erreur lors de la création de la demande");
+      setCoordinates(null);
+      setLocationStatus('idle');
+      setAssignedCollector(null);
+      
+    } catch (err) {
+      console.error('❌ Erreur création demande:', err);
+      
+      // Afficher l'erreur spécifique si disponible
+      if (err instanceof Error) {
+        if (err.message.includes('Données invalides')) {
+          toast.error('Données invalides - Vérifiez tous les champs obligatoires');
+        } else {
+          toast.error(`Erreur: ${err.message}`);
+        }
+      } else {
+        toast.error('Erreur lors de la création de la demande');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -169,6 +280,43 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
               />
             </div>
 
+            {/* Géolocalisation */}
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Géolocalisation</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={getUserLocation}
+                  disabled={locationStatus === 'loading'}
+                >
+                  {locationStatus === 'loading' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {locationStatus === 'success' && <CheckCircle className="h-4 w-4 mr-2 text-green-600" />}
+                  {locationStatus === 'loading' ? 'Localisation...' : locationStatus === 'success' ? 'Position obtenue' : 'Obtenir ma position'}
+                </Button>
+              </div>
+              
+              {locationStatus === 'success' && coordinates && (
+                <div className="text-xs text-muted-foreground">
+                  📍 Position: {coordinates[1].toFixed(4)}, {coordinates[0].toFixed(4)}
+                  <br />
+                  💡 Cela nous aide à trouver le collecteur le plus proche de vous
+                </div>
+              )}
+              
+              {locationStatus === 'error' && (
+                <Alert>
+                  <AlertDescription className="text-sm">
+                    Impossible d'obtenir votre position. La demande sera créée sans géolocalisation.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="description">Description *</Label>
               <Textarea
@@ -195,7 +343,6 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
                     <SelectItem value="low">Faible</SelectItem>
                     <SelectItem value="medium">Moyenne</SelectItem>
                     <SelectItem value="high">Élevée</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -221,11 +368,11 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
                     <SelectValue placeholder="Choisir l'heure" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="08:00-10:00">08:00 - 10:00</SelectItem>
-                    <SelectItem value="10:00-12:00">10:00 - 12:00</SelectItem>
-                    <SelectItem value="12:00-14:00">12:00 - 14:00</SelectItem>
-                    <SelectItem value="14:00-16:00">14:00 - 16:00</SelectItem>
-                    <SelectItem value="16:00-18:00">16:00 - 18:00</SelectItem>
+                    <SelectItem value="08:00">08:00 - 10:00</SelectItem>
+                    <SelectItem value="10:00">10:00 - 12:00</SelectItem>
+                    <SelectItem value="12:00">12:00 - 14:00</SelectItem>
+                    <SelectItem value="14:00">14:00 - 16:00</SelectItem>
+                    <SelectItem value="16:00">16:00 - 18:00</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -252,6 +399,24 @@ export function CreateWasteRequestForm({ onSubmit, onCancel }: CreateWasteReques
                 rows={2}
               />
             </div>
+
+            {/* Collecteur assigné */}
+            {assignedCollector && (
+              <div className="p-4 border rounded-lg bg-green-50 border-green-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <span className="font-medium text-green-800">Collecteur assigné !</span>
+                </div>
+                <div className="space-y-1 text-sm text-green-700">
+                  <p><strong>Nom :</strong> {assignedCollector.name}</p>
+                  <p><strong>Téléphone :</strong> {assignedCollector.phone}</p>
+                  <p><strong>Distance :</strong> ~{assignedCollector.distance}m de vous</p>
+                </div>
+                <div className="mt-2 text-xs text-green-600">
+                  💡 Le collecteur a été automatiquement notifié de votre demande
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-4 pt-4">
               <Button type="submit" disabled={isSubmitting} className="flex-1">

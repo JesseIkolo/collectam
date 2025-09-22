@@ -4,6 +4,10 @@ class NotificationService {
     this.smsTransport = (process.env.NOTIFY_TRANSPORT_SMS || 'mock').toLowerCase();
     this.emailTransport = (process.env.NOTIFY_TRANSPORT_EMAIL || 'mock').toLowerCase();
     this.pushTransport = (process.env.NOTIFY_TRANSPORT_PUSH || 'mock').toLowerCase();
+    
+    // WebSocket connections storage
+    this.connections = new Map(); // userId -> socket
+    this.io = null; // Will be set by server
 
     // Mock transport implementation
     this.mock = {
@@ -126,6 +130,184 @@ class NotificationService {
     }
 
     return results;
+  }
+
+  // ==================== REAL-TIME NOTIFICATIONS ====================
+
+  // Set Socket.IO instance
+  setSocketIO(io) {
+    this.io = io;
+    console.log('🔔 NotificationService: WebSocket initialized');
+  }
+
+  // Register user connection
+  registerConnection(userId, socket) {
+    this.connections.set(userId, socket);
+    console.log(`🔗 User ${userId} connected for notifications`);
+    
+    // Handle disconnection
+    socket.on('disconnect', () => {
+      this.connections.delete(userId);
+      console.log(`🔌 User ${userId} disconnected from notifications`);
+    });
+  }
+
+  // Send real-time notification
+  async sendRealTimeNotification(userId, notification) {
+    try {
+      // Send via WebSocket if user is connected
+      const socket = this.connections.get(userId);
+      if (socket) {
+        socket.emit('notification', {
+          id: `notif-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          ...notification
+        });
+        console.log(`📱 Real-time notification sent to user ${userId}`);
+        return { success: true, channel: 'websocket' };
+      }
+
+      // Fallback to push notification if available
+      console.log(`📤 User ${userId} not connected, using fallback notifications`);
+      return { success: false, reason: 'user_offline' };
+    } catch (error) {
+      console.error('❌ Error sending real-time notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Send notification to all collectors in area
+  async notifyCollectorsInArea(coordinates, radius, notification) {
+    if (!this.io) return { success: false, error: 'WebSocket not initialized' };
+
+    // Broadcast to all connected collectors
+    // In production, you'd filter by location
+    this.io.emit('area_notification', {
+      area: { coordinates, radius },
+      notification: {
+        id: `area-notif-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        ...notification
+      }
+    });
+
+    console.log(`📡 Area notification broadcasted (radius: ${radius}m)`);
+    return { success: true, channel: 'broadcast' };
+  }
+
+  // Enhanced collection notification with real-time
+  async sendEnhancedCollectionNotification(user, collection, type) {
+    const notifications = {
+      assigned: {
+        title: 'Nouvelle collecte assignée !',
+        body: `Collecte programmée pour ${collection.scheduledTime}`,
+        type: 'collection_assigned',
+        data: { collectionId: collection._id, status: 'assigned' },
+        priority: 'high',
+        sound: 'notification.wav'
+      },
+      started: {
+        title: 'Collecte en cours',
+        body: 'Le collecteur est en route vers votre domicile',
+        type: 'collection_started',
+        data: { collectionId: collection._id, status: 'in_progress' },
+        priority: 'normal'
+      },
+      completed: {
+        title: 'Collecte terminée !',
+        body: `Collecte terminée avec succès. Points gagnés: ${collection.points || 10}`,
+        type: 'collection_completed',
+        data: { collectionId: collection._id, status: 'completed', points: collection.points },
+        priority: 'normal',
+        actions: [{ title: 'Noter le collecteur', action: 'rate_collector' }]
+      }
+    };
+
+    const notification = notifications[type];
+    if (!notification) return { success: false, error: 'Invalid notification type' };
+
+    const results = [];
+
+    // 1. Send real-time notification
+    const realtimeResult = await this.sendRealTimeNotification(user._id, notification);
+    results.push(realtimeResult);
+
+    // 2. Send traditional notifications as backup
+    if (user.preferences?.notifications?.sms) {
+      results.push(await this.sendSMS(user.phone, notification.body));
+    }
+
+    if (user.preferences?.notifications?.email) {
+      results.push(await this.sendEmail(
+        user.email,
+        notification.title,
+        `<h3>${notification.title}</h3><p>${notification.body}</p>`,
+        notification.body
+      ));
+    }
+
+    return results;
+  }
+
+  // Enhanced mission notification for collectors
+  async sendEnhancedMissionNotification(collector, mission, type) {
+    const notifications = {
+      new_request: {
+        title: 'Nouvelle demande de collecte !',
+        body: `Demande à ${mission.distance}m de vous - ${mission.wasteType}`,
+        type: 'new_mission',
+        data: { 
+          missionId: mission._id, 
+          distance: mission.distance,
+          wasteType: mission.wasteType,
+          urgency: mission.urgency 
+        },
+        priority: 'high',
+        sound: 'mission_alert.wav',
+        actions: [
+          { title: 'Accepter', action: 'accept_mission' },
+          { title: 'Voir détails', action: 'view_mission' }
+        ]
+      },
+      reminder: {
+        title: 'Rappel de mission',
+        body: 'Vous avez une collecte en attente',
+        type: 'mission_reminder',
+        data: { missionId: mission._id },
+        priority: 'normal'
+      },
+      completed: {
+        title: 'Mission terminée !',
+        body: 'Paiement en cours de traitement',
+        type: 'mission_completed',
+        data: { missionId: mission._id, payment: mission.payment },
+        priority: 'normal'
+      }
+    };
+
+    const notification = notifications[type];
+    if (!notification) return { success: false, error: 'Invalid notification type' };
+
+    // Send real-time notification to collector
+    return await this.sendRealTimeNotification(collector._id, notification);
+  }
+
+  // Get notification history for user
+  async getNotificationHistory(userId, limit = 50) {
+    // In production, this would query a notifications database
+    // For now, return mock data structure
+    return {
+      notifications: [],
+      unreadCount: 0,
+      lastRead: new Date().toISOString()
+    };
+  }
+
+  // Mark notifications as read
+  async markAsRead(userId, notificationIds) {
+    // In production, update database
+    console.log(`📖 Marked ${notificationIds.length} notifications as read for user ${userId}`);
+    return { success: true };
   }
 }
 

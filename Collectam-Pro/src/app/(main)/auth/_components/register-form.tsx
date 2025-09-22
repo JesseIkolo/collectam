@@ -4,13 +4,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { MapPin, CheckCircle, Loader2 } from "lucide-react";
 import { AuthService } from "@/lib/auth";
 import { forceUserTypePreservation, getDashboardRouteByUserType } from "@/lib/user-utils";
 import { saveRegistrationData } from "@/lib/user-type-fixer";
@@ -37,6 +39,8 @@ const FormSchema = registerSchema
 
 export function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false);
+  const [coordinates, setCoordinates] = useState<[number, number] | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const router = useRouter();
   
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -54,11 +58,66 @@ export function RegisterForm() {
     },
   });
 
+  // Fonction pour obtenir la géolocalisation
+  const getUserLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("La géolocalisation n'est pas supportée par votre navigateur");
+      return;
+    }
+
+    setLocationStatus('loading');
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
+        setCoordinates(coords);
+        setLocationStatus('success');
+        toast.success("Position obtenue avec succès");
+        console.log('📍 Coordonnées collecteur obtenues:', coords);
+      },
+      (error) => {
+        console.error('❌ Erreur géolocalisation:', error);
+        setLocationStatus('error');
+        toast.error("Impossible d'obtenir votre position");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
+  };
+
+  // Surveiller le changement de userType pour demander la géolocalisation
+  const watchedUserType = form.watch("userType");
+  
+  useEffect(() => {
+    if (watchedUserType === 'collecteur' && locationStatus === 'idle') {
+      // Demander automatiquement la géolocalisation quand l'utilisateur sélectionne "Collecteur"
+      setTimeout(() => {
+        toast.info("En tant que collecteur, nous avons besoin de votre position pour vous assigner des demandes");
+        getUserLocation();
+      }, 500);
+    }
+  }, [watchedUserType, locationStatus]);
+
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     setIsLoading(true);
     
     try {
       const { confirmPassword, ...registerData } = data;
+      
+      // Pour les collecteurs, ajouter les données de géolocalisation et configurer le statut
+      if (data.userType === 'collecteur') {
+        if (coordinates) {
+          (registerData as any).lastLocation = {
+            type: 'Point',
+            coordinates: coordinates
+          };
+          (registerData as any).onDuty = true; // Activer le collecteur par défaut
+          console.log('📍 Inscription collecteur avec géolocalisation:', coordinates);
+        } else {
+          toast.error("Position requise pour les collecteurs. Veuillez autoriser la géolocalisation.");
+          setIsLoading(false);
+          return;
+        }
+      }
       
       // Save registration data for userType fixing
       saveRegistrationData(data);
@@ -187,6 +246,50 @@ export function RegisterForm() {
             </FormItem>
           )}
         />
+        
+        {/* Indicateur de géolocalisation pour les collecteurs */}
+        {watchedUserType === 'collecteur' && (
+          <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Position du collecteur</span>
+              {locationStatus === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
+              {locationStatus === 'success' && <CheckCircle className="h-4 w-4 text-green-600" />}
+            </div>
+            
+            {locationStatus === 'success' && coordinates && (
+              <div className="text-xs text-muted-foreground">
+                ✅ Position obtenue: {coordinates[1].toFixed(4)}, {coordinates[0].toFixed(4)}
+                <br />
+                💡 Cela nous permettra de vous assigner des demandes de collecte proches
+              </div>
+            )}
+            
+            {locationStatus === 'error' && (
+              <Alert>
+                <AlertDescription className="text-sm">
+                  ❌ Impossible d'obtenir votre position. Veuillez autoriser la géolocalisation pour continuer.
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="ml-2"
+                    onClick={getUserLocation}
+                  >
+                    Réessayer
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {locationStatus === 'loading' && (
+              <div className="text-xs text-muted-foreground">
+                📍 Obtention de votre position en cours...
+              </div>
+            )}
+          </div>
+        )}
+        
         <FormField
           control={form.control}
           name="companyName"

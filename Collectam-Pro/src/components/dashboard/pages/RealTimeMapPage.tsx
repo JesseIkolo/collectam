@@ -19,7 +19,10 @@ import {
   AlertTriangle,
   CheckCircle
 } from "lucide-react";
+import { InteractiveMap } from "@/components/maps/InteractiveMap";
+import HouseholdTrackingMap from "@/components/maps/HouseholdTrackingMap";
 import { mapService, CollectorLocation, WasteCollection } from "@/services/MapService";
+import { locationService } from "@/services/LocationService";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
@@ -35,6 +38,7 @@ interface MapFilters {
 export function RealTimeMapPage() {
   const [collectors, setCollectors] = useState<CollectorLocation[]>([]);
   const [collections, setCollections] = useState<WasteCollection[]>([]);
+  const [wasteRequestsForMap, setWasteRequestsForMap] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<MapFilters>({
@@ -64,77 +68,45 @@ export function RealTimeMapPage() {
   const loadMapData = async () => {
     try {
       setLoading(true);
-      // Utiliser des données mock en attendant l'API
-      const mockCollectors: CollectorLocation[] = [
-        {
-          id: "1",
-          name: "Jean Dupont",
-          vehicleType: "Camion",
-          currentLocation: "Akwa, Douala",
-          coordinates: { lat: 4.0511, lng: 9.7679 },
-          onDuty: true,
-          phone: "+237123456789",
-          lastUpdate: new Date().toISOString()
-        },
-        {
-          id: "2",
-          name: "Marie Ngono",
-          vehicleType: "Tricycle",
-          currentLocation: "Bonanjo, Douala",
-          coordinates: { lat: 4.0483, lng: 9.7671 },
-          onDuty: true,
-          phone: "+237987654321",
-          lastUpdate: new Date(Date.now() - 300000).toISOString()
-        }
-      ];
       
-      const mockCollections: WasteCollection[] = [
-        {
-          id: "1",
-          wasteType: "Plastique",
-          address: "123 Rue de la Paix, Douala",
-          coordinates: { lat: 4.0511, lng: 9.7679 },
-          status: "pending",
-          urgency: "medium",
-          scheduledDate: "2024-01-20",
-          scheduledTime: "14:00",
-          distance: 2.5,
-          assignedCollector: {
-            id: "1",
-            name: "Jean Dupont",
-            phone: "+237123456789",
-            estimatedArrival: new Date(Date.now() + 1800000).toISOString()
-          }
-        },
-        {
-          id: "2",
-          wasteType: "Organique",
-          address: "456 Avenue Charles de Gaulle, Douala",
-          coordinates: { lat: 4.0483, lng: 9.7671 },
-          status: "scheduled",
-          urgency: "low",
-          scheduledDate: "2024-01-18",
-          scheduledTime: "09:00",
-          distance: 1.8
-        },
-        {
-          id: "3",
-          wasteType: "Électronique",
-          address: "789 Boulevard de la Liberté, Douala",
-          coordinates: { lat: 4.0495, lng: 9.7685 },
-          status: "completed",
-          urgency: "high",
-          scheduledDate: "2024-01-16",
-          scheduledTime: "11:30",
-          distance: 3.2,
-          completedAt: new Date(Date.now() - 86400000).toISOString()
-        }
-      ];
+      // Récupérer les collecteurs actifs
+      const activeCollectors = await locationService.getActiveCollectors();
       
-      setCollectors(mockCollectors);
+      // Convertir en format CollectorLocation
+      const collectorsData: CollectorLocation[] = activeCollectors.map(collector => ({
+        id: collector.collectorId,
+        name: collector.name,
+        vehicleType: "Camion", // Par défaut
+        currentLocation: `Position GPS (${collector.location.coordinates[1].toFixed(4)}, ${collector.location.coordinates[0].toFixed(4)})`,
+        coordinates: { 
+          lat: collector.location.coordinates[1], 
+          lng: collector.location.coordinates[0] 
+        },
+        onDuty: collector.onDuty,
+        phone: "+237123456789", // À récupérer depuis l'API
+        lastUpdate: collector.lastUpdate
+      }));
+
+      // Pour l'instant, pas de collections mockées - utiliser les vraies données
+      const mockCollections: WasteCollection[] = [];
+
+      // Récupérer les demandes de l'utilisateur avec collecteurs assignés
+      // TODO: Implémenter l'API pour récupérer les demandes avec collecteurs
+      const wasteRequestsWithCollectors: any[] = [];
+      
+      setCollectors(collectorsData);
       setCollections(mockCollections);
+      setWasteRequestsForMap(wasteRequestsWithCollectors);
+      
+      console.log('📍 Collecteurs actifs chargés:', collectorsData.length);
     } catch (err) {
+      console.error('❌ Erreur chargement carte:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement de la carte');
+      
+      // Fallback vers des données vides
+      setCollectors([]);
+      setCollections([]);
+      setWasteRequestsForMap([]);
     } finally {
       setLoading(false);
     }
@@ -570,23 +542,15 @@ export function RealTimeMapPage() {
         </CardContent>
       </Card>
 
-      {/* Map Placeholder - In a real implementation, this would be an interactive map */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Vue Cartographique</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-96 bg-muted rounded-lg flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <MapPin className="h-12 w-12 mx-auto text-muted-foreground" />
-              <p className="text-muted-foreground">Carte interactive à venir</p>
-              <p className="text-sm text-muted-foreground">
-                Intégration avec Google Maps ou Mapbox pour visualiser les collecteurs et collectes en temps réel
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Carte de Suivi des Collectes MapTiler */}
+      <HouseholdTrackingMap 
+        wasteRequests={wasteRequestsForMap}
+        onRequestSelect={(request) => {
+          console.log('Demande sélectionnée:', request);
+          // Vous pouvez ajouter ici la logique pour afficher les détails de la demande
+        }}
+        className="mb-6"
+      />
     </div>
   );
 }

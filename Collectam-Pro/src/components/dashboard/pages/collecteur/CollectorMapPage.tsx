@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { locationService } from "@/services/LocationService";
 import { 
   MapPin, 
   Navigation, 
@@ -18,6 +19,8 @@ import {
   Pause,
   RotateCcw
 } from "lucide-react";
+import { InteractiveMap } from "@/components/maps/InteractiveMap";
+import CollectorRouteMap from "@/components/maps/CollectorRouteMap";
 
 interface CollectionPoint {
   id: string;
@@ -32,55 +35,12 @@ interface CollectionPoint {
 }
 
 export default function CollectorMapPage() {
-  const [collections, setCollections] = useState<CollectionPoint[]>([
-    {
-      id: '1',
-      address: '123 Rue de la Paix, Douala',
-      wasteType: 'Plastique',
-      priority: 'high',
-      estimatedWeight: 15.5,
-      status: 'pending',
-      coordinates: [9.7043, 4.0511],
-      timeSlot: '09:30',
-      distance: 0.8
-    },
-    {
-      id: '2',
-      address: '45 Avenue Kennedy, Douala',
-      wasteType: 'Organique',
-      priority: 'medium',
-      estimatedWeight: 8.2,
-      status: 'in_progress',
-      coordinates: [9.7083, 4.0531],
-      timeSlot: '10:15',
-      distance: 1.2
-    },
-    {
-      id: '3',
-      address: '78 Bd de la Liberté, Douala',
-      wasteType: 'Mixte',
-      priority: 'low',
-      estimatedWeight: 12.0,
-      status: 'completed',
-      coordinates: [9.7023, 4.0491],
-      timeSlot: '11:00',
-      distance: 2.1
-    },
-    {
-      id: '4',
-      address: '12 Rue du Commerce, Douala',
-      wasteType: 'Électronique',
-      priority: 'high',
-      estimatedWeight: 5.8,
-      status: 'pending',
-      coordinates: [9.7063, 4.0521],
-      timeSlot: '11:45',
-      distance: 1.5
-    }
-  ]);
+  const [collections, setCollections] = useState<CollectionPoint[]>([]);
 
   const [currentLocation, setCurrentLocation] = useState<[number, number]>([9.7043, 4.0511]);
   const [selectedCollection, setSelectedCollection] = useState<CollectionPoint | null>(null);
+  const [assignedRequests, setAssignedRequests] = useState<any[]>([]);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -116,6 +76,90 @@ export default function CollectorMapPage() {
   const inProgressCollections = collections.filter(c => c.status === 'in_progress');
   const completedCollections = collections.filter(c => c.status === 'completed');
 
+  // Obtenir et synchroniser la position réelle du collecteur
+  useEffect(() => {
+    let isActive = true;
+
+    const updateLocation = async () => {
+      try {
+        // Obtenir la position GPS
+        const position = await locationService.getCurrentPosition();
+        
+        if (!isActive) return;
+
+        // Mettre à jour l'état local
+        setCurrentLocation([position.longitude, position.latitude]);
+        setLocationError(null);
+
+        // Envoyer la position au serveur
+        await locationService.updateCollectorLocation(position);
+        
+        console.log('📍 Position collecteur synchronisée:', position);
+      } catch (error) {
+        console.error('❌ Erreur synchronisation position:', error);
+        setLocationError(error instanceof Error ? error.message : 'Erreur de géolocalisation');
+      }
+    };
+
+    // Mise à jour initiale
+    updateLocation();
+
+    // Mettre à jour la position toutes les 30 secondes
+    const locationInterval = setInterval(updateLocation, 30000);
+
+    // Démarrer le suivi en temps réel
+    locationService.startWatchingPosition(
+      async (position) => {
+        if (!isActive) return;
+        
+        setCurrentLocation([position.longitude, position.latitude]);
+        setLocationError(null);
+
+        // Envoyer la nouvelle position au serveur
+        try {
+          await locationService.updateCollectorLocation(position);
+          console.log('📍 Position temps réel synchronisée:', position);
+        } catch (error) {
+          console.error('❌ Erreur sync temps réel:', error);
+        }
+      },
+      (error) => {
+        if (!isActive) return;
+        setLocationError(error);
+      }
+    );
+
+    return () => {
+      isActive = false;
+      clearInterval(locationInterval);
+      locationService.stopWatchingPosition();
+    };
+  }, []);
+
+  // Convertir les collections en format pour CollectorRouteMap
+  useEffect(() => {
+    const wasteRequestsForMap = collections.map((collection) => ({
+      _id: collection.id,
+      wasteType: collection.wasteType.toLowerCase(),
+      status: collection.status,
+      address: collection.address,
+      coordinates: {
+        coordinates: [collection.coordinates[0], collection.coordinates[1]]
+      },
+      userId: {
+        _id: `user-${collection.id}`,
+        firstName: 'Client',
+        lastName: `#${collection.id}`,
+        phone: '+237123456789'
+      },
+      preferredDate: new Date().toISOString(),
+      preferredTime: collection.timeSlot,
+      estimatedWeight: collection.estimatedWeight,
+      description: `Collecte de ${collection.wasteType}`
+    }));
+    setAssignedRequests(wasteRequestsForMap);
+  }, [collections]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -135,6 +179,17 @@ export default function CollectorMapPage() {
             <Truck className="h-3 w-3" />
             En tournée
           </Badge>
+          {locationError ? (
+            <Badge variant="destructive" className="flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              GPS Erreur
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              GPS Actif
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -183,96 +238,28 @@ export default function CollectorMapPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Carte interactive */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Carte Interactive
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="aspect-[4/3] bg-muted rounded-lg relative overflow-hidden">
-                {/* Simulation d'une carte */}
-                <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-blue-50">
-                  {/* Points de collecte sur la carte */}
-                  {collections.map((collection, index) => (
-                    <div
-                      key={collection.id}
-                      className={`absolute w-4 h-4 rounded-full border-2 border-white shadow-lg cursor-pointer transform -translate-x-2 -translate-y-2 ${getPriorityColor(collection.priority)}`}
-                      style={{
-                        left: `${20 + index * 15}%`,
-                        top: `${30 + (index % 2) * 20}%`
-                      }}
-                      onClick={() => setSelectedCollection(collection)}
-                    />
-                  ))}
-                  
-                  {/* Position actuelle */}
-                  <div 
-                    className="absolute w-6 h-6 bg-blue-600 rounded-full border-4 border-white shadow-lg animate-pulse"
-                    style={{ left: '25%', top: '40%' }}
-                  />
-                  
-                  {/* Légende */}
-                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 text-xs">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                        <span>Ma position</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                        <span>Urgent</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                        <span>Normal</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                        <span>Faible</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {selectedCollection && (
-                <Alert className="mt-4">
-                  <MapPin className="h-4 w-4" />
-                  <AlertDescription>
-                    <div className="space-y-2">
-                      <p className="font-medium">{selectedCollection.address}</p>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span>Type: {selectedCollection.wasteType}</span>
-                        <span>Poids: {selectedCollection.estimatedWeight} kg</span>
-                        <span>Distance: {selectedCollection.distance} km</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" className="flex items-center gap-1">
-                          <Navigation className="h-3 w-3" />
-                          Navigation
-                        </Button>
-                        {selectedCollection.status === 'pending' && (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => startCollection(selectedCollection.id)}
-                          >
-                            Démarrer
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+      {/* Carte de Route Interactive MapTiler */}
+      <CollectorRouteMap 
+        assignedRequests={assignedRequests}
+        collectorLocation={currentLocation}
+        onStartCollection={(requestId) => {
+          console.log('Démarrer collecte:', requestId);
+          startCollection(requestId);
+        }}
+        onCompleteCollection={(requestId) => {
+          console.log('Terminer collecte:', requestId);
+          completeCollection(requestId);
+        }}
+        onNavigateToLocation={(coordinates, address) => {
+          console.log('Navigation vers:', address, coordinates);
+          // Ouvrir l'application de navigation native
+          const url = `https://www.google.com/maps/dir/?api=1&destination=${coordinates[1]},${coordinates[0]}`;
+          window.open(url, '_blank');
+        }}
+        className="mb-6"
+      />
+
+      <div className="grid gap-6 lg:grid-cols-1">
 
         {/* Liste des collectes */}
         <div className="space-y-4">

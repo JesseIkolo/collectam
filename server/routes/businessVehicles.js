@@ -8,11 +8,11 @@ const {
   deleteBusinessVehicle,
   assignCollectorToVehicle
 } = require('../controllers/businessVehicleController');
-const auth = require('../middlewares/auth');
+const { authenticateToken } = require('../middlewares/auth');
 const { validateBusinessUser } = require('../middlewares/businessValidation');
 
 // Middleware pour vérifier que l'utilisateur est authentifié et est un Business
-router.use(auth);
+router.use(authenticateToken);
 router.use(validateBusinessUser);
 
 // Routes CRUD pour les véhicules Business

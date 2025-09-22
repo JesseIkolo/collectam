@@ -1,14 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Truck, 
-  Plus, 
+import {
+  Plus,
+  Users,
+  Truck,
   UserMinus,
-  CheckCircle,
+  UserCheck,
+  MapPin,
+  Calendar,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  CheckSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +21,12 @@ import { toast } from 'sonner';
 import AddBusinessCollectorForm from '@/components/dashboard/forms/AddBusinessCollectorForm';
 import AddBusinessVehicleForm from '@/components/dashboard/forms/AddBusinessVehicleForm';
 import EditBusinessCollectorForm from '@/components/dashboard/forms/EditBusinessCollectorForm';
+import EditBusinessVehicleForm from '@/components/dashboard/forms/EditBusinessVehicleForm';
 import VehicleAssignmentModal from '@/components/dashboard/modals/VehicleAssignmentModal';
+import FleetFilters from '@/components/dashboard/filters/FleetFilters';
+import FilteredStats from '@/components/dashboard/stats/FilteredStats';
+import BulkActions from '@/components/dashboard/bulk/BulkActions';
+import SelectableCard from '@/components/dashboard/bulk/SelectableCard';
 import { BusinessCollector, BusinessVehicle } from '@/types/business';
 
 interface Vehicle {
@@ -87,11 +95,30 @@ export default function FleetPage() {
   const [showAddCollectorForm, setShowAddCollectorForm] = useState(false);
   const [showAddVehicleForm, setShowAddVehicleForm] = useState(false);
   const [editingCollector, setEditingCollector] = useState<BusinessCollector | null>(null);
+  const [editingVehicle, setEditingVehicle] = useState<BusinessVehicle | null>(null);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [assignmentTarget, setAssignmentTarget] = useState<{
     collector?: BusinessCollector;
     vehicle?: any;
   }>({});
+
+  // États pour les filtres
+  const [collectorFilters, setCollectorFilters] = useState({
+    search: '',
+    status: 'all',
+    workZone: 'all'
+  });
+
+  const [vehicleFilters, setVehicleFilters] = useState({
+    search: '',
+    status: 'all',
+    type: 'all'
+  });
+
+  // États pour les actions en lot
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedCollectors, setSelectedCollectors] = useState<string[]>([]);
+  const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
 
   useEffect(() => {
     fetchFleetData();
@@ -226,6 +253,122 @@ export default function FleetPage() {
     setAssignmentTarget({});
   };
 
+  // Fonctions de filtrage
+  const filterCollectors = (collectors: BusinessCollector[]) => {
+    return collectors.filter(collector => {
+      const matchesSearch = !collectorFilters.search || 
+        collector.firstName.toLowerCase().includes(collectorFilters.search.toLowerCase()) ||
+        collector.lastName.toLowerCase().includes(collectorFilters.search.toLowerCase()) ||
+        collector.email.toLowerCase().includes(collectorFilters.search.toLowerCase()) ||
+        (collector.employeeId && collector.employeeId.toLowerCase().includes(collectorFilters.search.toLowerCase()));
+
+      const matchesStatus = collectorFilters.status === 'all' || collector.status === collectorFilters.status;
+      
+      const matchesWorkZone = collectorFilters.workZone === 'all' || 
+        (collector.workZone && collector.workZone === collectorFilters.workZone);
+
+      return matchesSearch && matchesStatus && matchesWorkZone;
+    });
+  };
+
+  const filterVehicles = (vehicles: BusinessVehicle[]) => {
+    return vehicles.filter(vehicle => {
+      const matchesSearch = !vehicleFilters.search || 
+        vehicle.licensePlate.toLowerCase().includes(vehicleFilters.search.toLowerCase()) ||
+        vehicle.brand.toLowerCase().includes(vehicleFilters.search.toLowerCase()) ||
+        vehicle.model.toLowerCase().includes(vehicleFilters.search.toLowerCase());
+
+      const matchesStatus = vehicleFilters.status === 'all' || vehicle.status === vehicleFilters.status;
+      
+      const matchesType = vehicleFilters.type === 'all' || vehicle.vehicleType === vehicleFilters.type;
+
+      return matchesSearch && matchesStatus && matchesType;
+    });
+  };
+
+  // Obtenir les zones de travail disponibles
+  const getAvailableWorkZones = () => {
+    const zones = fleetData?.businessCollectors.list
+      .map(collector => collector.workZone)
+      .filter(zone => zone && zone.trim() !== '') as string[];
+    return [...new Set(zones)].sort();
+  };
+
+  // Données filtrées
+  const filteredCollectors = fleetData ? filterCollectors(fleetData.businessCollectors.list) : [];
+  const filteredVehicles = fleetData ? filterVehicles(fleetData.businessVehicles.list) : [];
+
+  // Vérifier si des filtres sont actifs
+  const hasActiveFilters = collectorFilters.search !== '' || 
+                          collectorFilters.status !== 'all' || 
+                          collectorFilters.workZone !== 'all' ||
+                          vehicleFilters.search !== '' || 
+                          vehicleFilters.status !== 'all' || 
+                          vehicleFilters.type !== 'all';
+
+  // Fonctions pour les actions en lot
+  const handleBulkAction = async (action: string, itemIds: string[], data?: any) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      throw new Error('Vous devez être connecté');
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+    if (action === 'delete') {
+      // Supprimer les éléments un par un
+      for (const id of itemIds) {
+        const endpoint = selectedCollectors.includes(id) 
+          ? `/api/business-collectors/${id}`
+          : `/api/business-vehicles/${id}`;
+        
+        const response = await fetch(`${apiUrl}${endpoint}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur lors de la suppression de l'élément ${id}`);
+        }
+      }
+    } else {
+      // Mettre à jour le statut des éléments
+      for (const id of itemIds) {
+        const endpoint = selectedCollectors.includes(id) 
+          ? `/api/business-collectors/${id}`
+          : `/api/business-vehicles/${id}`;
+        
+        const response = await fetch(`${apiUrl}${endpoint}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: data.status })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur lors de la mise à jour de l'élément ${id}`);
+        }
+      }
+    }
+
+    // Recharger les données après l'action
+    await fetchFleetData();
+  };
+
+  const toggleBulkMode = () => {
+    setBulkMode(!bulkMode);
+    setSelectedCollectors([]);
+    setSelectedVehicles([]);
+  };
+
+  const closeBulkMode = () => {
+    setBulkMode(false);
+    setSelectedCollectors([]);
+    setSelectedVehicles([]);
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -285,6 +428,24 @@ export default function FleetPage() {
     );
   }
 
+  // Afficher le formulaire d'édition de véhicule si demandé
+  if (editingVehicle) {
+    return (
+      <EditBusinessVehicleForm
+        vehicle={editingVehicle}
+        onCancel={() => setEditingVehicle(null)}
+        onSuccess={() => {
+          setEditingVehicle(null);
+          fetchFleetData(); // Recharger les données
+        }}
+        onDelete={() => {
+          setEditingVehicle(null);
+          fetchFleetData(); // Recharger les données
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -294,6 +455,14 @@ export default function FleetPage() {
           <p className="text-muted-foreground text-sm sm:text-base">Gérez vos véhicules et collecteurs</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
+          <Button 
+            variant={bulkMode ? "secondary" : "outline"}
+            className="w-full sm:w-auto"
+            onClick={toggleBulkMode}
+          >
+            <CheckSquare className="w-4 h-4 mr-2" />
+            {bulkMode ? 'Quitter sélection' : 'Sélection multiple'}
+          </Button>
           <Button 
             className="w-full sm:w-auto"
             onClick={() => setShowAddVehicleForm(true)}
@@ -312,61 +481,16 @@ export default function FleetPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Mes Collecteurs</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{fleetData?.businessCollectors.total || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {fleetData?.businessCollectors.stats.actif || 0} actifs
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Mes Véhicules</CardTitle>
-            <Truck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{fleetData?.businessVehicles.total || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {fleetData?.businessVehicles.stats.actif || 0} actifs
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Collecteurs Inactifs</CardTitle>
-            <UserMinus className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{fleetData?.businessCollectors.stats.inactif || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {fleetData?.businessCollectors.stats.suspendu || 0} suspendus
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Véhicules Maintenance</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{fleetData?.businessVehicles.stats.maintenance || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {fleetData?.businessVehicles.stats.hors_service || 0} hors service
-            </p>
-          </CardContent>
-        </Card>
-
-      </div>
+      {/* Statistiques filtrées */}
+      {fleetData && (
+        <FilteredStats
+          collectors={fleetData.businessCollectors.list}
+          vehicles={fleetData.businessVehicles.list}
+          filteredCollectors={filteredCollectors}
+          filteredVehicles={filteredVehicles}
+          hasActiveFilters={hasActiveFilters}
+        />
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="collectors" className="space-y-4">
@@ -376,6 +500,23 @@ export default function FleetPage() {
         </TabsList>
 
         <TabsContent value="collectors" className="space-y-4">
+          {/* Filtres pour collecteurs */}
+          {fleetData && fleetData.businessCollectors.list.length > 0 && (
+            <FleetFilters
+              type="collectors"
+              searchQuery={collectorFilters.search}
+              onSearchChange={(query) => setCollectorFilters(prev => ({ ...prev, search: query }))}
+              statusFilter={collectorFilters.status}
+              onStatusChange={(status) => setCollectorFilters(prev => ({ ...prev, status }))}
+              workZoneFilter={collectorFilters.workZone}
+              onWorkZoneChange={(zone) => setCollectorFilters(prev => ({ ...prev, workZone: zone }))}
+              availableWorkZones={getAvailableWorkZones()}
+              onClearFilters={() => setCollectorFilters({ search: '', status: 'all', workZone: 'all' })}
+              resultCount={filteredCollectors.length}
+              totalCount={fleetData.businessCollectors.list.length}
+            />
+          )}
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {fleetData?.businessCollectors.list.length === 0 ? (
               <div className="col-span-full text-center py-8">
@@ -390,8 +531,19 @@ export default function FleetPage() {
                 </Button>
               </div>
             ) : (
-              fleetData?.businessCollectors.list.map((collector) => (
-                <Card key={collector._id}>
+              filteredCollectors.map((collector) => (
+                <SelectableCard
+                  key={collector._id}
+                  isSelected={selectedCollectors.includes(collector._id)}
+                  onSelectionChange={(selected) => {
+                    if (selected) {
+                      setSelectedCollectors(prev => [...prev, collector._id]);
+                    } else {
+                      setSelectedCollectors(prev => prev.filter(id => id !== collector._id));
+                    }
+                  }}
+                  selectionMode={bulkMode}
+                >
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                       <div className="min-w-0 flex-1">
@@ -463,13 +615,29 @@ export default function FleetPage() {
                       </Button>
                     </div>
                   </CardContent>
-                </Card>
+                </SelectableCard>
               ))
             )}
           </div>
         </TabsContent>
 
         <TabsContent value="vehicles" className="space-y-4">
+          {/* Filtres pour véhicules */}
+          {fleetData && fleetData.businessVehicles.list.length > 0 && (
+            <FleetFilters
+              type="vehicles"
+              searchQuery={vehicleFilters.search}
+              onSearchChange={(query) => setVehicleFilters(prev => ({ ...prev, search: query }))}
+              statusFilter={vehicleFilters.status}
+              onStatusChange={(status) => setVehicleFilters(prev => ({ ...prev, status }))}
+              typeFilter={vehicleFilters.type}
+              onTypeChange={(type) => setVehicleFilters(prev => ({ ...prev, type }))}
+              onClearFilters={() => setVehicleFilters({ search: '', status: 'all', type: 'all' })}
+              resultCount={filteredVehicles.length}
+              totalCount={fleetData.businessVehicles.list.length}
+            />
+          )}
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {fleetData?.businessVehicles.list.length === 0 ? (
               <div className="col-span-full text-center py-8">
@@ -484,8 +652,19 @@ export default function FleetPage() {
                 </Button>
               </div>
             ) : (
-              fleetData?.businessVehicles.list.map((vehicle) => (
-              <Card key={vehicle._id}>
+              filteredVehicles.map((vehicle) => (
+              <SelectableCard
+                key={vehicle._id}
+                isSelected={selectedVehicles.includes(vehicle._id)}
+                onSelectionChange={(selected) => {
+                  if (selected) {
+                    setSelectedVehicles(prev => [...prev, vehicle._id]);
+                  } else {
+                    setSelectedVehicles(prev => prev.filter(id => id !== vehicle._id));
+                  }
+                }}
+                selectionMode={bulkMode}
+              >
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                     <div className="min-w-0 flex-1">
@@ -507,6 +686,18 @@ export default function FleetPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Capacité:</span>
                     <span>{vehicle.capacity} m³</span>
+                  </div>
+
+                  {/* Boutons d'action */}
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => setEditingVehicle(vehicle)}
+                    >
+                      Modifier
+                    </Button>
                   </div>
                   
                   {vehicle.assignedCollectorId ? (
@@ -542,7 +733,7 @@ export default function FleetPage() {
                     </div>
                   )}
                 </CardContent>
-              </Card>
+              </SelectableCard>
               ))
             )}
           </div>
@@ -589,6 +780,28 @@ export default function FleetPage() {
           fetchFleetData();
           closeAssignmentModal();
         }}
+      />
+
+      {/* Actions en lot pour collecteurs */}
+      <BulkActions
+        type="collectors"
+        items={filteredCollectors}
+        selectedItems={selectedCollectors}
+        onSelectionChange={setSelectedCollectors}
+        onBulkAction={handleBulkAction}
+        isVisible={bulkMode && selectedCollectors.length > 0}
+        onClose={closeBulkMode}
+      />
+
+      {/* Actions en lot pour véhicules */}
+      <BulkActions
+        type="vehicles"
+        items={filteredVehicles}
+        selectedItems={selectedVehicles}
+        onSelectionChange={setSelectedVehicles}
+        onBulkAction={handleBulkAction}
+        isVisible={bulkMode && selectedVehicles.length > 0}
+        onClose={closeBulkMode}
       />
     </div>
   );

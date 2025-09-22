@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MapPin, Calendar, Award, Plus, AlertTriangle, Trash2, Clock, Building } from "lucide-react";
 import { dashboardService } from "@/services/DashboardService";
 import { wasteService } from "@/services/WasteService";
+import { InteractiveMap } from "@/components/maps/InteractiveMap";
 import Link from "next/link";
 
 interface UserDashboardData {
@@ -48,12 +49,12 @@ export function UserDashboard() {
       // Récupérer les données depuis le contexte
       const recentRequests = getRecentRequests(3);
   
-      // Mock data pour le dashboard utilisateur
+      // Utiliser les vraies données du contexte
       const mockDashboardData: UserDashboardData = {
-        totalRequests: recentRequests.length + 9,
-        pendingRequests: recentRequests.filter(r => r.status === 'pending').length + 1,
-        completedRequests: recentRequests.filter(r => r.status === 'completed').length + 6,
-        totalWeight: recentRequests.reduce((sum, r) => sum + r.estimatedWeight, 0) + 40,
+        totalRequests: recentRequests.length,
+        pendingRequests: recentRequests.filter(r => r.status === 'pending').length,
+        completedRequests: recentRequests.filter(r => r.status === 'completed').length,
+        totalWeight: recentRequests.reduce((sum, r) => sum + r.estimatedWeight, 0),
         recentRequests: recentRequests.map(req => ({
           _id: req.id,
           wasteType: req.wasteType.toLowerCase(),
@@ -64,14 +65,12 @@ export function UserDashboard() {
           estimatedWeight: req.estimatedWeight,
           urgency: req.urgency
         })),
-        carbonFootprintReduced: 15.2,
-        pointsEarned: 120,
-        badgesUnlocked: 3,
-        achievements: [
-          { icon: "", name: "Éco-débutant" },
-          { icon: "", name: "Recycleur" },
-          { icon: "", name: "Champion du tri" }
-        ]
+        carbonFootprintReduced: recentRequests.reduce((sum, r) => sum + r.estimatedWeight, 0) * 0.5,
+        pointsEarned: recentRequests.length * 10,
+        badgesUnlocked: Math.floor(recentRequests.length / 3),
+        achievements: recentRequests.length > 0 ? [
+          { icon: "🌱", name: "Éco-débutant" }
+        ] : []
       };
       setDashboardData(mockDashboardData);
       setRecentWasteRequests(mockDashboardData.recentRequests);
@@ -130,17 +129,27 @@ export function UserDashboard() {
           </p>
         </div>
         
-        <Button asChild>
-          <Link href="/dashboard/user/waste-management">
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle demande
-          </Link>
-        </Button>  
-        <Button>
-          <Badge variant="outline">
-            {0} points
-          </Badge>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild>
+            <Link href="/dashboard/user/waste-management">
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle demande
+            </Link>
+          </Button>
+          
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/user/map">
+              <MapPin className="h-4 w-4 mr-2" />
+              Carte Temps Réel
+            </Link>
+          </Button>
+          
+          <Button variant="ghost">
+            <Badge variant="outline">
+              {0} points
+            </Badge>
+          </Button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -223,6 +232,15 @@ export function UserDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Carte Interactive */}
+      <InteractiveMap 
+        height="400px" 
+        showControls={true}
+        defaultCenter={[4.0511, 9.7679]} // Douala, Cameroon
+        defaultZoom={12}
+        className="mb-6"
+      />
 
       {/* Impact environnemental */}
       <div className="grid gap-4 md:grid-cols-2">
