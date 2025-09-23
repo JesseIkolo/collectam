@@ -35,46 +35,87 @@ class LocationService {
   private lastKnownPosition: LocationData | null = null;
 
   /**
-   * Obtenir la position actuelle de l'utilisateur
+   * Obtenir la position actuelle de l'utilisateur avec fallback
    */
   async getCurrentPosition(): Promise<LocationData> {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error('Géolocalisation non supportée par ce navigateur'));
+        console.warn('⚠️ Géolocalisation non supportée, utilisation de position par défaut');
+        // Fallback vers Douala, Cameroun
+        resolve({
+          latitude: 4.0511,
+          longitude: 9.7679,
+          accuracy: 1000
+        });
         return;
       }
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const locationData: LocationData = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          };
-          this.lastKnownPosition = locationData;
-          resolve(locationData);
-        },
-        (error) => {
-          let errorMessage = 'Erreur de géolocalisation';
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage = 'Permission de géolocalisation refusée';
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage = 'Position non disponible';
-              break;
-            case error.TIMEOUT:
-              errorMessage = 'Timeout de géolocalisation';
-              break;
+      // Première tentative avec haute précision
+      const tryHighAccuracy = () => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const locationData: LocationData = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy
+            };
+            this.lastKnownPosition = locationData;
+            console.log('✅ Position obtenue avec haute précision:', locationData);
+            resolve(locationData);
+          },
+          (error) => {
+            console.warn('⚠️ Erreur haute précision, tentative avec précision normale...', error.message);
+            tryLowAccuracy();
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 60000 // 1 minute
           }
-          reject(new Error(errorMessage));
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 minutes
-        }
-      );
+        );
+      };
+
+      // Deuxième tentative avec précision normale
+      const tryLowAccuracy = () => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const locationData: LocationData = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy
+            };
+            this.lastKnownPosition = locationData;
+            console.log('✅ Position obtenue avec précision normale:', locationData);
+            resolve(locationData);
+          },
+          (error) => {
+            console.error('❌ Erreur géolocalisation:', error.message);
+            
+            // Utiliser la dernière position connue si disponible
+            if (this.lastKnownPosition) {
+              console.log('📍 Utilisation de la dernière position connue');
+              resolve(this.lastKnownPosition);
+              return;
+            }
+
+            // Fallback final vers position par défaut (Douala)
+            console.warn('⚠️ Utilisation de la position par défaut (Douala)');
+            resolve({
+              latitude: 4.0511,
+              longitude: 9.7679,
+              accuracy: 10000
+            });
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 15000,
+            maximumAge: 300000 // 5 minutes
+          }
+        );
+      };
+
+      // Commencer par la haute précision
+      tryHighAccuracy();
     });
   }
 

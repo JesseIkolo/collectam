@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, Truck, UserCheck, UserMinus, AlertTriangle, CheckCircle, Clock, Wrench } from 'lucide-react';
 import { BusinessCollector, BusinessVehicle } from '@/types/business';
+import { DonutChart, CustomBarChart } from '@/components/charts';
 
 interface FilteredStatsProps {
   collectors: BusinessCollector[];
@@ -140,28 +141,16 @@ export default function FilteredStats({
           <CardHeader>
             <CardTitle className="text-base">Statuts Collecteurs</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span className="text-sm">Actifs</span>
-              </div>
-              <Badge variant="outline">{collectorStats.actif}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                <span className="text-sm">Inactifs</span>
-              </div>
-              <Badge variant="outline">{collectorStats.inactif}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <span className="text-sm">Suspendus</span>
-              </div>
-              <Badge variant="outline">{collectorStats.suspendu}</Badge>
-            </div>
+          <CardContent>
+            <DonutChart
+              data={[
+                { name: 'Actifs', value: collectorStats.actif, color: '#10b981' },
+                { name: 'Inactifs', value: collectorStats.inactif, color: '#6b7280' },
+                { name: 'Suspendus', value: collectorStats.suspendu, color: '#ef4444' }
+              ].filter(item => item.value > 0)}
+              size="sm"
+              centerText={`${collectorStats.filtered}`}
+            />
           </CardContent>
         </Card>
 
@@ -170,35 +159,17 @@ export default function FilteredStats({
           <CardHeader>
             <CardTitle className="text-base">Statuts Véhicules</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span className="text-sm">Actifs</span>
-              </div>
-              <Badge variant="outline">{vehicleStats.actif}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                <span className="text-sm">Maintenance</span>
-              </div>
-              <Badge variant="outline">{vehicleStats.maintenance}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span className="text-sm">En mission</span>
-              </div>
-              <Badge variant="outline">{vehicleStats.en_mission}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <span className="text-sm">Hors service</span>
-              </div>
-              <Badge variant="outline">{vehicleStats.hors_service}</Badge>
-            </div>
+          <CardContent>
+            <DonutChart
+              data={[
+                { name: 'Actifs', value: vehicleStats.actif, color: '#10b981' },
+                { name: 'Maintenance', value: vehicleStats.maintenance, color: '#f59e0b' },
+                { name: 'En mission', value: vehicleStats.en_mission, color: '#3b82f6' },
+                { name: 'Hors service', value: vehicleStats.hors_service, color: '#ef4444' }
+              ].filter(item => item.value > 0)}
+              size="sm"
+              centerText={`${vehicleStats.filtered}`}
+            />
           </CardContent>
         </Card>
       </div>
@@ -212,18 +183,17 @@ export default function FilteredStats({
               <CardHeader>
                 <CardTitle className="text-base">Types de Véhicules</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {Object.entries(vehicleTypes)
-                  .sort(([,a], [,b]) => b - a)
-                  .map(([type, count]) => (
-                    <div key={type} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Truck className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm capitalize">{type}</span>
-                      </div>
-                      <Badge variant="outline">{count}</Badge>
-                    </div>
-                  ))}
+              <CardContent>
+                <CustomBarChart
+                  data={Object.entries(vehicleTypes)
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([type, count]) => ({
+                      name: type.charAt(0).toUpperCase() + type.slice(1),
+                      value: count
+                    }))}
+                  color="#3b82f6"
+                  height={200}
+                />
               </CardContent>
             </Card>
           )}

@@ -22,16 +22,21 @@ import {
 } from "lucide-react";
 import { wasteRequestService, WasteRequest } from "@/services/WasteRequestService";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface AssignedRequestsSectionProps {
   className?: string;
+  onUpdate?: () => void;
 }
 
-export function AssignedRequestsSection({ className }: AssignedRequestsSectionProps) {
+export function AssignedRequestsSection({ className, onUpdate }: AssignedRequestsSectionProps) {
   const [requests, setRequests] = useState<WasteRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const router = useRouter();
+  const { notifyCollectionStarted, notifyCollectionCompleted } = useWebSocket();
 
   useEffect(() => {
     loadAssignedRequests();
@@ -68,6 +73,12 @@ export function AssignedRequestsSection({ className }: AssignedRequestsSectionPr
       
       toast.success('Collecte démarrée avec succès');
       console.log('🚛 Collecte démarrée:', requestId);
+      // WebSocket notification pour le ménage
+      try { notifyCollectionStarted(requestId); } catch {}
+      // Notify parent to refresh stats
+      onUpdate?.();
+      // Rediriger vers la carte collecteur, centrée sur la collecte
+      router.push(`/dashboard/collector/map?focus=${requestId}`);
     } catch (err) {
       console.error('❌ Erreur démarrage collecte:', err);
       toast.error('Erreur lors du démarrage de la collecte');
@@ -93,6 +104,10 @@ export function AssignedRequestsSection({ className }: AssignedRequestsSectionPr
       
       toast.success('Collecte terminée avec succès');
       console.log('✅ Collecte terminée:', requestId);
+      // WebSocket notification pour le ménage
+      try { notifyCollectionCompleted(requestId, request?.estimatedWeight); } catch {}
+      // Notify parent to refresh stats
+      onUpdate?.();
     } catch (err) {
       console.error('❌ Erreur finalisation collecte:', err);
       toast.error('Erreur lors de la finalisation de la collecte');
@@ -333,7 +348,11 @@ export function AssignedRequestsSection({ className }: AssignedRequestsSectionPr
                   </Button>
                 )}
 
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => router.push(`/dashboard/collector/map?focus=${request._id}`)}
+                >
                   <MapPin className="h-4 w-4 mr-2" />
                   Voir sur la carte
                 </Button>

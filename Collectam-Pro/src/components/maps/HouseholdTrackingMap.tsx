@@ -35,15 +35,20 @@ interface HouseholdTrackingMapProps {
   wasteRequests: WasteRequest[];
   onRequestSelect?: (request: WasteRequest) => void;
   className?: string;
+  center?: [number, number];
+  highlightMarkerId?: string;
 }
 
 const HouseholdTrackingMap: React.FC<HouseholdTrackingMapProps> = ({
   wasteRequests,
   onRequestSelect,
-  className = ''
+  className = '',
+  center,
+  highlightMarkerId
 }) => {
   const [selectedRequest, setSelectedRequest] = useState<WasteRequest | null>(null);
   const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
+  const [mapRoutes, setMapRoutes] = useState<any[]>([]);
   const [collectorETAs, setCollectorETAs] = useState<Record<string, { distance: number; eta: number; etaText: string }>>({});
 
   // Calculer les ETAs pour les collecteurs assignés
@@ -98,14 +103,27 @@ const HouseholdTrackingMap: React.FC<HouseholdTrackingMapProps> = ({
     }
   }, [wasteRequests]);
 
-  // Conversion des demandes en marqueurs de carte
+  // Conversion des demandes en marqueurs de carte et création des itinéraires
   useEffect(() => {
     const markers: MapMarker[] = [];
+    const routes: any[] = [];
 
     wasteRequests.forEach(request => {
-      // Marqueur pour la demande de collecte
-      if (request.coordinates) {
-        markers.push({
+      // Marqueur pour la demande de collecte (avec validation des coordonnées)
+      if (request.coordinates && 
+          request.coordinates.coordinates && 
+          Array.isArray(request.coordinates.coordinates) && 
+          request.coordinates.coordinates.length === 2) {
+        
+        const [lng, lat] = request.coordinates.coordinates;
+        
+        // Vérifier que les coordonnées sont valides
+        if (typeof lng === 'number' && typeof lat === 'number' && 
+            !isNaN(lng) && !isNaN(lat) && 
+            lng >= -180 && lng <= 180 && 
+            lat >= -90 && lat <= 90) {
+          
+          markers.push({
           id: `request-${request._id}`,
           coordinates: request.coordinates.coordinates,
           type: 'waste-request',
@@ -140,16 +158,30 @@ const HouseholdTrackingMap: React.FC<HouseholdTrackingMapProps> = ({
             ]
           }
         });
+        } else {
+          console.warn(`⚠️ Coordonnées invalides pour la demande ${request._id}:`, request.coordinates.coordinates);
+        }
       }
 
-      // Marqueur pour le collecteur assigné (si en cours)
+      // Marqueur pour le collecteur assigné (si en cours) avec validation
       if (request.assignedCollector && 
           request.assignedCollector.lastLocation && 
+          request.assignedCollector.lastLocation.coordinates &&
+          Array.isArray(request.assignedCollector.lastLocation.coordinates) &&
+          request.assignedCollector.lastLocation.coordinates.length === 2 &&
           (request.status === 'scheduled' || request.status === 'in_progress')) {
         
-        markers.push({
-          id: `collector-${request.assignedCollector._id}`,
-          coordinates: request.assignedCollector.lastLocation.coordinates,
+        const [collectorLng, collectorLat] = request.assignedCollector.lastLocation.coordinates;
+        
+        // Valider les coordonnées du collecteur
+        if (typeof collectorLng === 'number' && typeof collectorLat === 'number' && 
+            !isNaN(collectorLng) && !isNaN(collectorLat) && 
+            collectorLng >= -180 && collectorLng <= 180 && 
+            collectorLat >= -90 && collectorLat <= 90) {
+          
+          markers.push({
+            id: `collector-${request.assignedCollector._id}`,
+            coordinates: request.assignedCollector.lastLocation.coordinates,
           type: 'collector',
           data: request.assignedCollector,
           popup: {
@@ -175,10 +207,83 @@ const HouseholdTrackingMap: React.FC<HouseholdTrackingMapProps> = ({
             ]
           }
         });
+        } else {
+          console.warn(`⚠️ Coordonnées collecteur invalides pour ${request.assignedCollector._id}`);
+        }
+
+        // Créer l'itinéraire entre le collecteur et la demande (si en cours) avec validation
+        if (request.assignedCollector && 
+            request.assignedCollector.lastLocation && 
+            request.assignedCollector.lastLocation.coordinates &&
+            request.coordinates &&
+            request.coordinates.coordinates &&
+            request.status === 'in_progress') {
+          
+          const collectorCoords = request.assignedCollector.lastLocation.coordinates;
+          const requestCoords = request.coordinates.coordinates;
+          
+          // Valider que les deux coordonnées sont valides pour l'itinéraire
+          if (Array.isArray(collectorCoords) && collectorCoords.length === 2 &&
+              Array.isArray(requestCoords) && requestCoords.length === 2 &&
+              !collectorCoords.some(coord => isNaN(coord)) &&
+              !requestCoords.some(coord => isNaN(coord))) {
+            
+            routes.push({
+              id: `route-${request._id}`,
+              coordinates: [collectorCoords, requestCoords],
+              color: '#FF4444', // Rouge pour l'itinéraire actif
+              width: 4,
+              opacity: 0.8
+            });
+          } else {
+            console.warn(`⚠️ Coordonnées invalides pour l'itinéraire de la demande ${request._id}`);
+          }
+        }
       }
     });
 
     setMapMarkers(markers);
+    setMapRoutes(routes);
+    console.log(`🗺️ ${markers.length} marqueurs et ${routes.length} itinéraires créés`);
+  }, [wasteRequests, collectorETAs]);
+
+  // Suivi temps réel de la position des collecteurs
+  useEffect(() => {
+    const updateCollectorPositions = async () => {
+      const activeRequests = wasteRequests.filter(r => 
+        r.assignedCollector && (r.status === 'scheduled' || r.status === 'in_progress')
+      );
+
+      if (activeRequests.length === 0) return;
+
+      console.log('🔄 Mise à jour des positions des collecteurs...');
+      
+      for (const request of activeRequests) {
+        if (request.assignedCollector) {
+          try {
+            // Récupérer la position actuelle du collecteur
+            const collectorLocation = await locationService.getCollectorLocation(request.assignedCollector._id);
+            
+            // Mettre à jour la position dans la demande
+            request.assignedCollector.lastLocation = {
+              coordinates: collectorLocation.location.coordinates
+            };
+            
+            console.log(`📍 Position collecteur ${request.assignedCollector.firstName} mise à jour`);
+          } catch (error) {
+            console.error(`❌ Erreur mise à jour position collecteur ${request.assignedCollector._id}:`, error);
+          }
+        }
+      }
+    };
+
+    // Mise à jour immédiate
+    updateCollectorPositions();
+
+    // Mise à jour toutes les 15 secondes pour le suivi temps réel
+    const positionInterval = setInterval(updateCollectorPositions, 15000);
+    
+    return () => clearInterval(positionInterval);
   }, [wasteRequests]);
 
   const getWasteTypeLabel = (type: string) => {
@@ -252,6 +357,9 @@ const HouseholdTrackingMap: React.FC<HouseholdTrackingMapProps> = ({
         <CardContent>
           <CollectamMap
             markers={mapMarkers}
+            routes={mapRoutes}
+            center={center}
+            highlightMarkerId={highlightMarkerId}
             onMarkerClick={(marker) => {
               if (marker.type === 'waste-request') {
                 setSelectedRequest(marker.data);

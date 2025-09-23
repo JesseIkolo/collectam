@@ -122,10 +122,8 @@ export function RatingSystem({ userId, collectionId, mode, className }: RatingSy
   const loadAllRatings = async () => {
     setLoading(true);
     try {
-      // Mock data for management view
-      const mockRatings: Rating[] = [
-        // Add more mock ratings for management
-      ];
+      // Pas de données mockées - tout à zéro
+      const mockRatings: Rating[] = [];
       setRatings(mockRatings);
     } catch (error) {
       console.error('❌ Failed to load all ratings:', error);

@@ -1,5 +1,6 @@
 const WasteRequest = require('../models/WasteRequest');
 const User = require('../models/User');
+const webSocketService = require('../services/WebSocketService');
 
 /**
  * Find the nearest available collector to a given location
@@ -12,27 +13,41 @@ const findNearestCollector = async (coordinates, maxDistance = 50000) => {
     console.log('🔍 Recherche du collecteur le plus proche pour:', coordinates);
     
     // Find collectors who are available and have location data
-    const nearestCollectors = await User.aggregate([
-      {
-        $geoNear: {
-          near: {
-            type: 'Point',
-            coordinates: coordinates
-          },
-          distanceField: 'distance',
-          maxDistance: maxDistance,
-          spherical: true,
-          query: {
-            userType: 'collecteur',
-            onDuty: true,
-            'lastLocation.coordinates': { $exists: true, $ne: [] }
-          }
+    // SOLUTION TEMPORAIRE: Utiliser find() au lieu de $geoNear pour éviter l'erreur d'index
+    const availableCollectors = await User.find({
+      userType: 'collecteur',
+      onDuty: true,
+      'lastLocation.coordinates': { $exists: true, $ne: [] }
+    });
+
+    if (availableCollectors.length === 0) {
+      console.log('❌ Aucun collecteur disponible trouvé');
+      return null;
+    }
+
+    // Calculer manuellement la distance et trouver le plus proche
+    let nearestCollector = null;
+    let minDistance = Infinity;
+
+    for (const collector of availableCollectors) {
+      if (collector.lastLocation && collector.lastLocation.coordinates && collector.lastLocation.coordinates.length === 2) {
+        // Calcul simple de distance (approximation)
+        const [collectorLng, collectorLat] = collector.lastLocation.coordinates;
+        const [requestLng, requestLat] = coordinates;
+        
+        // Distance euclidienne approximative (en degrés, puis convertie en mètres)
+        const latDiff = requestLat - collectorLat;
+        const lngDiff = requestLng - collectorLng;
+        const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111000; // ~111km par degré
+        
+        if (distance < maxDistance && distance < minDistance) {
+          minDistance = distance;
+          nearestCollector = { ...collector.toObject(), distance };
         }
-      },
-      {
-        $limit: 1
       }
-    ]);
+    }
+
+    const nearestCollectors = nearestCollector ? [nearestCollector] : [];
 
     if (nearestCollectors.length > 0) {
       const collector = nearestCollectors[0];
@@ -57,15 +72,20 @@ const notifyCollector = async (collectorId, wasteRequest) => {
   try {
     console.log('🔔 Envoi de notification au collecteur:', collectorId);
     
-    // TODO: Implement real-time notification system (WebSocket, Push notifications, etc.)
-    // For now, we'll just log the notification
-    console.log(`📱 Notification envoyée au collecteur ${collectorId} pour la demande ${wasteRequest._id}`);
+    // Envoyer notification WebSocket temps réel
+    webSocketService.notifyNewWasteRequest(collectorId.toString(), {
+      _id: wasteRequest._id,
+      wasteType: wasteRequest.wasteType,
+      address: wasteRequest.address,
+      urgency: wasteRequest.urgency,
+      estimatedWeight: wasteRequest.estimatedWeight,
+      preferredDate: wasteRequest.preferredDate,
+      coordinates: wasteRequest.coordinates
+    });
     
-    // In a real implementation, you would:
-    // 1. Send push notification to collector's mobile app
-    // 2. Send WebSocket message if collector is online
-    // 3. Send SMS/Email notification as backup
-    // 4. Update collector's notification queue in database
+    console.log(`📱 Notification WebSocket envoyée au collecteur ${collectorId} pour la demande ${wasteRequest._id}`);
+    
+    // TODO: Ajouter notifications push mobile et SMS/Email de secours
     
   } catch (error) {
     console.error('❌ Erreur lors de l\'envoi de notification:', error);
@@ -149,8 +169,10 @@ const createWasteRequest = async (req, res) => {
     }
 
     console.log('💾 Sauvegarde de la demande...');
+    console.log('👤 ID utilisateur dans la demande:', wasteRequest.userId);
     await wasteRequest.save();
     console.log('✅ Demande sauvegardée avec succès!');
+    console.log('🆔 ID de la demande créée:', wasteRequest._id);
 
     // Try to find and assign the nearest collector
     const nearestCollector = await findNearestCollector(wasteRequest.coordinates.coordinates);
@@ -166,6 +188,15 @@ const createWasteRequest = async (req, res) => {
       
       // Send notification to the collector
       await notifyCollector(nearestCollector._id, wasteRequest);
+      
+      // Notify the household that a collector has been assigned
+      webSocketService.notifyCollectorAssigned(userId.toString(), {
+        _id: nearestCollector._id,
+        firstName: nearestCollector.firstName,
+        lastName: nearestCollector.lastName,
+        phone: nearestCollector.phone,
+        email: nearestCollector.email
+      });
       
       // Populate the assigned collector for response
       await wasteRequest.populate('assignedCollector', 'firstName lastName phone email');
@@ -451,12 +482,48 @@ const getAssignedRequests = async (req, res) => {
       });
     }
 
-    const assignedRequests = await WasteRequest.find({ 
-      assignedCollector: collectorId,
-      status: { $in: ['scheduled', 'in_progress'] }
-    })
-      .populate('userId', 'firstName lastName phone address')
-      .sort({ scheduledDate: 1 });
+    // Utiliser une requête avec distinct pour éviter les doublons
+    const assignedRequests = await WasteRequest.aggregate([
+      {
+        $match: {
+          assignedCollector: collectorId,
+          status: { $in: ['scheduled', 'in_progress'] }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            userId: '$userId',
+            wasteType: '$wasteType',
+            address: '$address',
+            preferredDate: '$preferredDate'
+          },
+          doc: { $first: '$$ROOT' } // Garder seulement le premier document de chaque groupe
+        }
+      },
+      {
+        $replaceRoot: { newRoot: '$doc' }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'userId',
+          pipeline: [
+            { $project: { firstName: 1, lastName: 1, phone: 1, address: 1 } }
+          ]
+        }
+      },
+      {
+        $unwind: '$userId'
+      },
+      {
+        $sort: { scheduledDate: 1, createdAt: 1 }
+      }
+    ]);
+
+    console.log(`📋 ${assignedRequests.length} demandes assignées trouvées pour le collecteur ${collectorId}`);
 
     res.json({
       success: true,

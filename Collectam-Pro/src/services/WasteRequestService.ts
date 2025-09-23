@@ -107,8 +107,52 @@ class WasteRequestService {
    */
   async getUserRequests(): Promise<WasteRequest[]> {
     console.log('🗑️ Récupération des demandes de l\'utilisateur...');
-    const response = await this.makeRequest('/waste-requests');
-    return response.data || [];
+    
+    try {
+      // Essayer d'abord l'endpoint waste-collection-requests (nouveau modèle)
+      let response;
+      try {
+        response = await this.makeRequest('/waste-collection-requests/user');
+        console.log('✅ Demandes récupérées depuis waste-collection-requests:', response.data?.length || 0);
+      } catch (error) {
+        console.warn('⚠️ Endpoint waste-collection-requests non disponible, essai avec waste-requests...');
+        // Fallback vers l'ancien endpoint
+        response = await this.makeRequest('/waste-requests');
+        console.log('✅ Demandes récupérées depuis waste-requests:', response.data?.length || 0);
+      }
+      
+      const requests = response.data || [];
+      
+      // Formatter les demandes pour s'assurer que les coordonnées sont correctes
+      const formattedRequests = requests.map((request: any) => {
+        let formattedCoordinates = null;
+        
+        if (request.coordinates) {
+          if (Array.isArray(request.coordinates) && request.coordinates.length === 2) {
+            // Format: [lng, lat]
+            formattedCoordinates = request.coordinates;
+          } else if (request.coordinates.coordinates && Array.isArray(request.coordinates.coordinates)) {
+            // Format GeoJSON: { type: 'Point', coordinates: [lng, lat] }
+            formattedCoordinates = request.coordinates.coordinates;
+          }
+        }
+        
+        return {
+          ...request,
+          coordinates: formattedCoordinates
+        };
+      });
+      
+      console.log('📋 Demandes formatées:', formattedRequests.length);
+      formattedRequests.forEach((req: any) => {
+        console.log(`- ${req._id}: ${req.wasteType} à ${req.address}, coords:`, req.coordinates);
+      });
+      
+      return formattedRequests;
+    } catch (error) {
+      console.error('❌ Erreur récupération demandes utilisateur:', error);
+      return [];
+    }
   }
 
   /**
@@ -169,12 +213,20 @@ class WasteRequestService {
   // ==================== COLLECTOR METHODS ====================
 
   /**
-   * Get all requests assigned to the current collector
+   * Get assigned requests for the current collector
    */
   async getAssignedRequests(): Promise<WasteRequest[]> {
-    console.log('📋 Récupération des demandes assignées au collecteur...');
-    const response = await this.makeRequest('/waste-requests/assigned');
-    return response.data || [];
+    console.log('🗑️ Récupération des demandes assignées au collecteur...');
+    
+    try {
+      const response = await this.makeRequest('/waste-requests/assigned');
+      console.log('✅ Demandes assignées récupérées (collector):', response.data?.length || 0);
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('❌ Erreur récupération demandes assignées:', error);
+      return [];
+    }
   }
 
   /**

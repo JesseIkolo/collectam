@@ -40,7 +40,7 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // limit each IP to 1000 requests per windowMs (augmenté de 100 à 1000)
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.'
@@ -96,6 +96,9 @@ app.use('/api/business-vehicles', require('./routes/businessVehicles'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/waitlist', require('./routes/waitlist'));
 app.use('/api/waste-requests', require('./routes/wasteRequests'));
+app.use('/api/waste-collection-requests', require('./routes/wasteCollectionRequests'));
+app.use('/api/enterprise', require('./routes/enterprise'));
+app.use('/api/user', require('./routes/userStats'));
 app.use('/api/map', require('./routes/map'));
 
 // Health check endpoint

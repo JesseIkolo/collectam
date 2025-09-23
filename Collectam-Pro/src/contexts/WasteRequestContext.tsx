@@ -79,45 +79,8 @@ interface WasteRequestContextType {
 
 const WasteRequestContext = createContext<WasteRequestContextType | undefined>(undefined);
 
-// Données mock initiales
-const initialMockData: WasteRequestData[] = [
-  {
-    id: "1",
-    wasteType: "Plastique",
-    description: "Bouteilles en plastique et emballages",
-    estimatedWeight: 2.5,
-    address: "123 Rue de la Paix, Douala",
-    status: "pending",
-    urgency: "medium",
-    preferredDate: "2024-01-20",
-    preferredTime: "14:00-16:00",
-    createdAt: "2024-01-15T10:30:00Z"
-  },
-  {
-    id: "2",
-    wasteType: "Organique",
-    description: "Déchets de cuisine et restes alimentaires",
-    estimatedWeight: 5.0,
-    address: "456 Avenue Charles de Gaulle, Douala",
-    status: "scheduled",
-    urgency: "low",
-    preferredDate: "2024-01-18",
-    preferredTime: "08:00-10:00",
-    createdAt: "2024-01-14T08:15:00Z"
-  },
-  {
-    id: "3",
-    wasteType: "Électronique",
-    description: "Ancien téléphone et chargeurs",
-    estimatedWeight: 0.8,
-    address: "789 Boulevard de la Liberté, Douala",
-    status: "in_progress",
-    urgency: "high",
-    preferredDate: "2024-01-16",
-    preferredTime: "10:00-12:00",
-    createdAt: "2024-01-13T14:20:00Z"
-  }
-];
+// Pas de données initiales - tout commence à zéro
+const initialMockData: WasteRequestData[] = [];
 
 export function WasteRequestProvider({ children }: { children: ReactNode }) {
   const [wasteRequests, setWasteRequests] = useState<WasteRequestData[]>(initialMockData);

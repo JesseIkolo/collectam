@@ -1,199 +1,263 @@
-const WebSocket = require('ws');
+const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 class WebSocketService {
     constructor() {
-        this.clients = new Map(); // Map of clientId -> { ws, userId, organizationId, role }
-        this.rooms = new Map(); // Map of roomId -> Set of clientIds
+        this.io = null;
+        this.connectedUsers = new Map(); // userId -> { socketId, userInfo, rooms }
+        this.rooms = new Map(); // roomId -> Set of userIds
     }
 
     initialize(server) {
-        this.wss = new WebSocket.Server({ server });
-
-        this.wss.on('connection', (ws, req) => {
-            this.handleConnection(ws, req);
-        });
-    }
-
-    handleConnection(ws, req) {
-        const clientId = this.generateClientId();
-
-        // Store client info
-        this.clients.set(clientId, {
-            ws,
-            userId: null,
-            organizationId: null,
-            role: null,
-            connectedAt: new Date()
-        });
-
-        ws.on('message', (message) => {
-            try {
-                const data = JSON.parse(message);
-                this.handleMessage(clientId, data);
-            } catch (error) {
-                console.error('WebSocket message parsing error:', error);
+        this.io = new Server(server, {
+            cors: {
+                origin: process.env.CLIENT_URL || "http://localhost:3000",
+                methods: ["GET", "POST"],
+                credentials: true
             }
         });
 
-        ws.on('close', () => {
-            this.handleDisconnection(clientId);
+        // Middleware d'authentification
+        this.io.use(async (socket, next) => {
+            try {
+                const token = socket.handshake.auth.token;
+                
+                if (!token) {
+                    return next(new Error('Token manquant'));
+                }
+
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                const user = await User.findById(decoded._id);
+                
+                if (!user) {
+                    return next(new Error('Utilisateur non trouvé'));
+                }
+
+                socket.userId = user._id.toString();
+                socket.userInfo = {
+                    _id: user._id,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    role: user.role,
+                    userType: user.userType
+                };
+                
+                next();
+            } catch (error) {
+                console.error('❌ Erreur authentification WebSocket:', error);
+                next(new Error('Token invalide'));
+            }
         });
 
-        ws.on('error', (error) => {
-            console.error('WebSocket error:', error);
-            this.handleDisconnection(clientId);
+        this.io.on('connection', (socket) => {
+            this.handleConnection(socket);
         });
 
-        // Send connection confirmation
-        ws.send(JSON.stringify({
-            type: 'connection',
-            clientId,
-            timestamp: new Date().toISOString()
-        }));
+        console.log('✅ Service WebSocket initialisé');
     }
 
-    handleMessage(clientId, data) {
-        const client = this.clients.get(clientId);
-        if (!client) return;
+    handleConnection(socket) {
+        const userId = socket.userId;
+        const userInfo = socket.userInfo;
 
-        switch (data.type) {
-            case 'authenticate':
-                this.authenticateClient(clientId, data);
-                break;
-            case 'join_room':
-                this.joinRoom(clientId, data.roomId);
-                break;
-            case 'leave_room':
-                this.leaveRoom(clientId, data.roomId);
-                break;
-            default:
-                console.log('Unknown message type:', data.type);
+        console.log('🔌 Nouvelle connexion WebSocket:', {
+            socketId: socket.id,
+            userId,
+            name: `${userInfo.firstName} ${userInfo.lastName}`,
+            role: userInfo.role
+        });
+
+        // Enregistrer l'utilisateur connecté
+        this.connectedUsers.set(userId, {
+            socketId: socket.id,
+            userInfo,
+            rooms: new Set()
+        });
+
+        // Rejoindre automatiquement les rooms selon le rôle
+        this.autoJoinRooms(socket, userInfo);
+
+        // Gérer les événements
+        this.setupSocketEvents(socket);
+
+        // Gérer la déconnexion
+        socket.on('disconnect', (reason) => {
+            console.log('❌ Déconnexion WebSocket:', {
+                socketId: socket.id,
+                userId,
+                reason
+            });
+            this.handleDisconnection(userId);
+        });
+    }
+
+    autoJoinRooms(socket, userInfo) {
+        // Rejoindre les rooms selon le rôle
+        if (userInfo.role === 'collector') {
+            socket.join('collectors');
+            this.addUserToRoom('collectors', socket.userId);
+            console.log('🚛 Collecteur rejoint la room collectors');
         }
-    }
-
-    authenticateClient(clientId, data) {
-        const client = this.clients.get(clientId);
-        if (!client) return;
-
-        // In a real implementation, verify JWT token here
-        client.userId = data.userId;
-        client.organizationId = data.organizationId;
-        client.role = data.role;
-
-        // Join organization room
-        if (client.organizationId) {
-            this.joinRoom(clientId, `org_${client.organizationId}`);
+        
+        if (userInfo.userType === 'menage') {
+            socket.join('households');
+            this.addUserToRoom('households', socket.userId);
+            console.log('🏠 Ménage rejoint la room households');
         }
 
-        // Send authentication confirmation
-        client.ws.send(JSON.stringify({
-            type: 'authenticated',
-            timestamp: new Date().toISOString()
-        }));
+        // Room générale pour tous les utilisateurs
+        socket.join('general');
+        this.addUserToRoom('general', socket.userId);
     }
 
-    joinRoom(clientId, roomId) {
+    setupSocketEvents(socket) {
+        const userId = socket.userId;
+
+        // Rejoindre une room spécifique
+        socket.on('join_room', (data) => {
+            const { room } = data;
+            socket.join(room);
+            this.addUserToRoom(room, userId);
+            console.log(`🏠 ${userId} rejoint la room: ${room}`);
+        });
+
+        // Quitter une room
+        socket.on('leave_room', (data) => {
+            const { room } = data;
+            socket.leave(room);
+            this.removeUserFromRoom(room, userId);
+            console.log(`🚪 ${userId} quitte la room: ${room}`);
+        });
+
+        // Mise à jour position collecteur
+        socket.on('location_update', (data) => {
+            console.log('📍 Mise à jour position reçue:', data);
+            // Diffuser aux ménages qui ont des demandes assignées à ce collecteur
+            this.broadcastCollectorLocationUpdate(data);
+        });
+
+        // Collecte démarrée
+        socket.on('collection_started', (data) => {
+            console.log('▶️ Collecte démarrée:', data);
+            this.broadcastCollectionStarted(data);
+        });
+
+        // Collecte terminée
+        socket.on('collection_completed', (data) => {
+            console.log('✅ Collecte terminée:', data);
+            this.broadcastCollectionCompleted(data);
+        });
+    }
+
+    handleDisconnection(userId) {
+        // Retirer l'utilisateur de toutes les rooms
+        const userConnection = this.connectedUsers.get(userId);
+        if (userConnection) {
+            userConnection.rooms.forEach(room => {
+                this.removeUserFromRoom(room, userId);
+            });
+        }
+        
+        this.connectedUsers.delete(userId);
+    }
+
+    // Gestion des rooms
+    addUserToRoom(roomId, userId) {
         if (!this.rooms.has(roomId)) {
             this.rooms.set(roomId, new Set());
         }
-        this.rooms.get(roomId).add(clientId);
+        this.rooms.get(roomId).add(userId);
+
+        const userConnection = this.connectedUsers.get(userId);
+        if (userConnection) {
+            userConnection.rooms.add(roomId);
+        }
     }
 
-    leaveRoom(clientId, roomId) {
+    removeUserFromRoom(roomId, userId) {
         const room = this.rooms.get(roomId);
         if (room) {
-            room.delete(clientId);
+            room.delete(userId);
             if (room.size === 0) {
                 this.rooms.delete(roomId);
             }
         }
+
+        const userConnection = this.connectedUsers.get(userId);
+        if (userConnection) {
+            userConnection.rooms.delete(roomId);
+        }
     }
 
-    handleDisconnection(clientId) {
-        const client = this.clients.get(clientId);
-        if (client) {
-            // Leave all rooms
-            for (const [roomId, room] of this.rooms.entries()) {
-                if (room.has(clientId)) {
-                    room.delete(clientId);
-                    if (room.size === 0) {
-                        this.rooms.delete(roomId);
-                    }
-                }
+    // Méthodes de diffusion
+    broadcastToRoom(roomId, event, data) {
+        if (this.io) {
+            this.io.to(roomId).emit(event, data);
+            console.log(`📡 Diffusion vers room ${roomId}:`, event);
+        }
+    }
+
+    broadcastToUser(userId, event, data) {
+        const userConnection = this.connectedUsers.get(userId);
+        if (userConnection && this.io) {
+            this.io.to(userConnection.socketId).emit(event, data);
+            console.log(`📡 Diffusion vers utilisateur ${userId}:`, event);
+        }
+    }
+
+    broadcastCollectorLocationUpdate(locationData) {
+        // Diffuser la position du collecteur aux ménages concernés
+        this.io.emit('collector_location_update', locationData);
+    }
+
+    broadcastCollectionStarted(data) {
+        // Notifier le ménage que sa collecte a commencé
+        this.io.emit('collection_started', data);
+    }
+
+    broadcastCollectionCompleted(data) {
+        // Notifier le ménage que sa collecte est terminée
+        this.io.emit('collection_completed', data);
+    }
+
+    // Méthodes publiques pour notifier depuis les contrôleurs
+    notifyNewWasteRequest(collectorId, wasteRequestData) {
+        console.log('🔔 Notification nouvelle demande au collecteur:', collectorId);
+        this.broadcastToUser(collectorId, 'new_waste_request', {
+            type: 'new_request',
+            message: `Nouvelle demande de collecte: ${wasteRequestData.wasteType}`,
+            data: wasteRequestData,
+            timestamp: new Date().toISOString()
+        });
+    }
+
+    notifyCollectorAssigned(userId, collectorData) {
+        console.log('🔔 Notification collecteur assigné au ménage:', userId);
+        this.broadcastToUser(userId, 'collector_assigned', {
+            type: 'collector_assigned',
+            message: `Collecteur assigné: ${collectorData.firstName} ${collectorData.lastName}`,
+            data: collectorData,
+            timestamp: new Date().toISOString()
+        });
+    }
+
+    // Obtenir les statistiques de connexion
+    getConnectionStats() {
+        return {
+            connectedUsers: this.connectedUsers.size,
+            activeRooms: this.rooms.size,
+            usersByRole: {
+                collectors: Array.from(this.connectedUsers.values())
+                    .filter(conn => conn.userInfo.role === 'collector').length,
+                households: Array.from(this.connectedUsers.values())
+                    .filter(conn => conn.userInfo.userType === 'menage').length
             }
-        }
-        this.clients.delete(clientId);
-    }
-
-    // Broadcast to organization
-    broadcastToOrganization(organizationId, message) {
-        const roomId = `org_${organizationId}`;
-        const room = this.rooms.get(roomId);
-
-        if (room) {
-            const messageStr = JSON.stringify(message);
-            room.forEach(clientId => {
-                const client = this.clients.get(clientId);
-                if (client && client.ws.readyState === WebSocket.OPEN) {
-                    client.ws.send(messageStr);
-                }
-            });
-        }
-    }
-
-    // Broadcast mission update
-    broadcastMissionUpdate(organizationId, missionId, update) {
-        this.broadcastToOrganization(organizationId, {
-            type: 'mission_update',
-            missionId,
-            update,
-            timestamp: new Date().toISOString()
-        });
-    }
-
-    // Broadcast mission status change
-    broadcastMissionStatusChange(organizationId, missionId, oldStatus, newStatus) {
-        this.broadcastToOrganization(organizationId, {
-            type: 'mission_status_change',
-            missionId,
-            oldStatus,
-            newStatus,
-            timestamp: new Date().toISOString()
-        });
-    }
-
-    // Broadcast new mission assignment
-    broadcastMissionAssignment(organizationId, missionId, collectorId) {
-        this.broadcastToOrganization(organizationId, {
-            type: 'mission_assigned',
-            missionId,
-            collectorId,
-            timestamp: new Date().toISOString()
-        });
-    }
-
-    generateClientId() {
-        return `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    }
-
-    // Get connected clients info (for monitoring)
-    getConnectedClients() {
-        return Array.from(this.clients.entries()).map(([clientId, client]) => ({
-            clientId,
-            userId: client.userId,
-            organizationId: client.organizationId,
-            role: client.role,
-            connectedAt: client.connectedAt
-        }));
-    }
-
-    // Get room info (for monitoring)
-    getRooms() {
-        return Array.from(this.rooms.entries()).map(([roomId, clientIds]) => ({
-            roomId,
-            clientCount: clientIds.size
-        }));
+        };
     }
 }
 
-module.exports = new WebSocketService();
+// Instance singleton
+const webSocketService = new WebSocketService();
+
+module.exports = webSocketService;

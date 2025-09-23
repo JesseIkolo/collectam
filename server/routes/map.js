@@ -22,6 +22,23 @@ router.get('/collectors',
 
 /**
  * @swagger
+ * /api/map/active-collectors:
+ *   get:
+ *     summary: Get active collectors (alias for /collectors)
+ *     tags: [Map]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of active collectors
+ */
+router.get('/active-collectors', 
+  authenticateToken,
+  MapController.getActiveCollectors
+);
+
+/**
+ * @swagger
  * /api/map/collections:
  *   get:
  *     summary: Get nearby waste collections

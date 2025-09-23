@@ -4,6 +4,44 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as maptilersdk from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
 
+// Styles CSS pour l'animation de battement de cœur et le surlignage
+const heartbeatStyles = `
+  @keyframes heartbeat {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 2px 10px rgba(0,0,0,0.3);
+    }
+    50% {
+      transform: scale(1.2);
+      box-shadow: 0 0 30px rgba(255, 0, 0, 1), 0 2px 15px rgba(0,0,0,0.4);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 2px 10px rgba(0,0,0,0.3);
+    }
+  }
+  @keyframes highlightPulse {
+    0% { box-shadow: 0 0 0 0 rgba(14,165,233,0.6); }
+    70% { box-shadow: 0 0 0 12px rgba(14,165,233,0.0); }
+    100% { box-shadow: 0 0 0 0 rgba(14,165,233,0.0); }
+  }
+  
+  .collectam-marker {
+    transition: all 0.3s ease;
+  }
+  .collectam-highlight {
+    outline: 3px solid #0ea5e9; /* cyan-500 */
+    animation: highlightPulse 1.5s ease-out 3;
+  }
+`;
+
+// Injecter les styles dans le document
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = heartbeatStyles;
+  document.head.appendChild(styleSheet);
+}
+
 // Configuration MapTiler
 const MAPTILER_API_KEY = 'DvJJUZaEy1icy86CXLTL';
 maptilersdk.config.apiKey = MAPTILER_API_KEY;
@@ -25,10 +63,19 @@ export interface MapMarker {
   };
 }
 
+export interface RouteLayer {
+  id: string;
+  coordinates: [number, number][];
+  color?: string;
+  width?: number;
+  opacity?: number;
+}
+
 export interface CollectamMapProps {
   center?: [number, number];
   zoom?: number;
   markers?: MapMarker[];
+  routes?: RouteLayer[];
   onMarkerClick?: (marker: MapMarker) => void;
   onMapClick?: (coordinates: [number, number]) => void;
   showUserLocation?: boolean;
@@ -37,12 +84,14 @@ export interface CollectamMapProps {
   className?: string;
   realTimeTracking?: boolean;
   clustered?: boolean;
+  highlightMarkerId?: string;
 }
 
 const CollectamMap: React.FC<CollectamMapProps> = ({
   center = [9.7043, 4.0511], // Douala, Cameroun par défaut
   zoom = 12,
   markers = [],
+  routes = [],
   onMarkerClick,
   onMapClick,
   showUserLocation = true,
@@ -50,7 +99,8 @@ const CollectamMap: React.FC<CollectamMapProps> = ({
   height = '400px',
   className = '',
   realTimeTracking = false,
-  clustered = false
+  clustered = false,
+  highlightMarkerId
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maptilersdk.Map | null>(null);
@@ -97,15 +147,24 @@ const CollectamMap: React.FC<CollectamMapProps> = ({
         return { ...baseStyle, backgroundColor: '#10B981' }; // Vert
       case 'waste-request':
         const statusColors = {
-          pending: '#F59E0B', // Orange
-          scheduled: '#8B5CF6', // Violet
-          in_progress: '#EF4444', // Rouge
+          pending: '#FF0000', // Rouge fluorescent
+          scheduled: '#FF0000', // Rouge fluorescent
+          in_progress: '#FF4444', // Rouge plus clair
           completed: '#10B981', // Vert
           cancelled: '#6B7280' // Gris
         };
+        
+        // Style avec effet de battement de cœur pour les demandes actives
+        const isActive = marker.status === 'pending' || marker.status === 'scheduled';
         return { 
           ...baseStyle, 
-          backgroundColor: statusColors[marker.status as keyof typeof statusColors] || '#F59E0B' 
+          backgroundColor: statusColors[marker.status as keyof typeof statusColors] || '#FF0000',
+          boxShadow: isActive 
+            ? '0 0 20px rgba(255, 0, 0, 0.8), 0 2px 10px rgba(0,0,0,0.3)' 
+            : '0 2px 10px rgba(0,0,0,0.3)',
+          animation: isActive ? 'heartbeat 1.5s ease-in-out infinite' : 'none',
+          width: isActive ? '40px' : '32px',
+          height: isActive ? '40px' : '32px'
         };
       case 'collection-point':
         return { ...baseStyle, backgroundColor: '#F97316' }; // Orange foncé
@@ -168,12 +227,73 @@ const CollectamMap: React.FC<CollectamMapProps> = ({
     };
   }, []);
 
+  // Mise à jour des routes
+  useEffect(() => {
+    if (!map.current || !isLoaded) return;
+
+    // Supprimer les routes existantes
+    routes.forEach(route => {
+      if (map.current?.getSource(`route-${route.id}`)) {
+        map.current?.removeLayer(`route-${route.id}`);
+        map.current?.removeSource(`route-${route.id}`);
+      }
+    });
+
+    // Ajouter les nouvelles routes
+    routes.forEach(route => {
+      const routeGeoJSON = {
+        type: 'Feature' as const,
+        properties: {},
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: route.coordinates
+        }
+      };
+
+      // Ajouter la source de données
+      map.current?.addSource(`route-${route.id}`, {
+        type: 'geojson',
+        data: routeGeoJSON
+      });
+
+      // Ajouter la couche de ligne
+      map.current?.addLayer({
+        id: `route-${route.id}`,
+        type: 'line',
+        source: `route-${route.id}`,
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': route.color || '#3B82F6',
+          'line-width': route.width || 4,
+          'line-opacity': route.opacity || 0.8
+        }
+      });
+    });
+  }, [routes, isLoaded]);
+
+  // Recentrer la carte quand la prop center change
+  useEffect(() => {
+    if (!map.current || !isLoaded) return;
+    if (center && Array.isArray(center) && center.length === 2) {
+      try {
+        map.current.setCenter(center);
+      } catch (e) {
+        console.warn('⚠️ Impossible de recentrer la carte', e);
+      }
+    }
+  }, [center, isLoaded]);
+
   // Mise à jour des marqueurs
   useEffect(() => {
     if (!map.current || !isLoaded) return;
 
-    // Supprimer les anciens marqueurs
-    Object.values(markersRef.current).forEach(marker => marker.remove());
+    // Supprimer tous les marqueurs existants
+    Object.values(markersRef.current).forEach(marker => {
+      marker.remove();
+    });
     markersRef.current = {};
 
     // Ajouter les nouveaux marqueurs
@@ -181,6 +301,7 @@ const CollectamMap: React.FC<CollectamMapProps> = ({
       try {
         // Créer l'élément DOM pour le marqueur
         const el = document.createElement('div');
+        el.className = 'collectam-marker'; // Ajouter la classe pour identification
         const markerStyle = getMarkerStyle(markerData);
         
         Object.assign(el.style, markerStyle);
@@ -229,6 +350,20 @@ const CollectamMap: React.FC<CollectamMapProps> = ({
           }
         }
 
+        // Surligner le marqueur si demandé
+        if (highlightMarkerId && markerData.id === highlightMarkerId) {
+          try {
+            el.classList.add('collectam-highlight');
+            // Ouvrir le popup si disponible
+            // @ts-ignore - togglePopup may exist depending on SDK version
+            marker.togglePopup && marker.togglePopup();
+            // Retirer le surlignage après 4.5s
+            setTimeout(() => el.classList.remove('collectam-highlight'), 4500);
+          } catch (e) {
+            console.warn('⚠️ Impossible de surligner/ouvrir le popup du marqueur', e);
+          }
+        }
+
         // Gestion du clic sur le marqueur
         el.addEventListener('click', () => {
           if (onMarkerClick) {
@@ -252,7 +387,24 @@ const CollectamMap: React.FC<CollectamMapProps> = ({
       map.current.fitBounds(bounds, { padding: 50 });
     }
 
-  }, [markers, isLoaded]);
+  }, [markers, isLoaded, highlightMarkerId]);
+
+  // Nettoyage lors du démontage du composant
+  useEffect(() => {
+    return () => {
+      // Nettoyer tous les marqueurs
+      Object.values(markersRef.current).forEach(marker => {
+        marker.remove();
+      });
+      markersRef.current = {};
+      
+      // Nettoyer la carte
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className={`relative ${className}`}>

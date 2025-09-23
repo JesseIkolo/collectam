@@ -6,14 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { 
-  BarChart3, 
-  Users, 
+  CheckCircle, 
   Truck, 
-  Settings, 
-  CreditCard,
-  TrendingUp,
-  Activity,
-  CheckCircle
+  Users, 
+  Activity, 
+  Clock, 
+  BarChart3, 
+  CreditCard
 } from "lucide-react";
 import Link from "next/link";
 import { AuthService } from '@/lib/auth';
@@ -27,6 +26,7 @@ import SettingsPage from "./settings/page";
 
 const navigation = [
   { name: 'Vue d\'ensemble', href: '/dashboard/business', icon: BarChart3, current: true },
+  { name: 'Carte Temps Réel', href: '/dashboard/business/map', icon: MapPin, current: false },
   { name: 'Gestion de Flotte', href: '/dashboard/business/fleet', icon: Truck, current: false },
   { name: 'Analytics', href: '/dashboard/business/analytics', icon: Activity, current: false },
   { name: 'Facturation', href: '/dashboard/business/billing', icon: CreditCard, current: false },
@@ -44,6 +44,9 @@ export default function BusinessDashboardPage() {
 
   const loadDashboardData = async () => {
     try {
+      setLoading(true);
+      console.log('🏢 Chargement des données dashboard business...');
+      
       // Récupérer les données réelles de l'utilisateur
       const currentUser = AuthService.getUser();
       const userSubscription = currentUser?.subscription;
@@ -54,33 +57,110 @@ export default function BusinessDashboardPage() {
         'business-quarterly': 'Trimestriel',
         'business-yearly': 'Annuel'
       };
-      
-      setTimeout(() => {
-        setDashboardData({
-          subscription: {
-            plan: userSubscription?.planId ? 
-              planMapping[userSubscription.planId as keyof typeof planMapping] || 'Mensuel' :
-              'Mensuel',
-            status: 'active',
-            daysLeft: 45,
-            expiresAt: '2024-04-15'
-          },
-          fleet: {
-            totalVehicles: 8,
-            activeVehicles: 6,
-            totalCollectors: 12,
-            activeCollectors: 9
-          },
-          stats: {
-            totalCollections: 234,
-            totalWeight: 1567,
-            averageResponseTime: 18,
-            customerSatisfaction: 4.8
-          }
-        });
-        setLoading(false);
-      }, 1000);
+
+      // Récupérer les données de flotte réelles
+      const token = localStorage.getItem('accessToken');
+      const [collectorsResponse, vehiclesResponse, statsResponse] = await Promise.allSettled([
+        fetch('/api/business-collectors', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/business-vehicles', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/business-subscription/stats', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      // Traiter les données des collecteurs
+      let collectorsData = [];
+      if (collectorsResponse.status === 'fulfilled' && collectorsResponse.value.ok) {
+        const collectorsResult = await collectorsResponse.value.json();
+        collectorsData = collectorsResult.data || [];
+      }
+
+      // Traiter les données des véhicules
+      let vehiclesData = [];
+      if (vehiclesResponse.status === 'fulfilled' && vehiclesResponse.value.ok) {
+        const vehiclesResult = await vehiclesResponse.value.json();
+        vehiclesData = vehiclesResult.data || [];
+      }
+
+      // Traiter les statistiques
+      let statsData = {};
+      if (statsResponse.status === 'fulfilled' && statsResponse.value.ok) {
+        const statsResult = await statsResponse.value.json();
+        statsData = statsResult.data || {};
+      }
+
+      // Calculer les métriques réelles
+      const activeCollectors = collectorsData.filter((c: any) => c.status === 'actif').length;
+      const activeVehicles = vehiclesData.filter((v: any) => v.status === 'actif').length;
+
+      // Calculer la date d'expiration de l'abonnement
+      const subscriptionDate = userSubscription?.createdAt ? new Date(userSubscription.createdAt) : new Date();
+      const planDuration = userSubscription?.planId === 'business-yearly' ? 365 : 
+                          userSubscription?.planId === 'business-quarterly' ? 90 : 30;
+      const expirationDate = new Date(subscriptionDate.getTime() + (planDuration * 24 * 60 * 60 * 1000));
+      const daysLeft = Math.max(0, Math.ceil((expirationDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+
+      setDashboardData({
+        subscription: {
+          plan: userSubscription?.planId ? 
+            planMapping[userSubscription.planId as keyof typeof planMapping] || 'Mensuel' :
+            'Mensuel',
+          status: userSubscription?.status || 'active',
+          daysLeft,
+          expiresAt: expirationDate.toISOString()
+        },
+        fleet: {
+          totalVehicles: vehiclesData.length,
+          activeVehicles,
+          totalCollectors: collectorsData.length,
+          activeCollectors
+        },
+        stats: {
+          totalCollections: statsData.totalCollections || 0,
+          totalWeight: statsData.totalWeight || 0,
+          averageResponseTime: statsData.averageResponseTime || 0,
+          customerSatisfaction: statsData.customerSatisfaction || 0
+        }
+      });
+
+      console.log('✅ Données dashboard business chargées:', {
+        collectors: collectorsData.length,
+        vehicles: vehiclesData.length,
+        activeCollectors,
+        activeVehicles
+      });
+
     } catch (error) {
+      console.error('❌ Erreur chargement dashboard business:', error);
+      // Fallback avec données minimales
+      const currentUser = AuthService.getUser();
+      const userSubscription = currentUser?.subscription;
+      
+      setDashboardData({
+        subscription: {
+          plan: 'Mensuel',
+          status: 'active',
+          daysLeft: 30,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        fleet: {
+          totalVehicles: 0,
+          activeVehicles: 0,
+          totalCollectors: 0,
+          activeCollectors: 0
+        },
+        stats: {
+          totalCollections: 0,
+          totalWeight: 0,
+          averageResponseTime: 0,
+          customerSatisfaction: 0
+        }
+      });
+    } finally {
       setLoading(false);
     }
   };
@@ -183,26 +263,26 @@ export default function BusinessDashboardPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Collectes</CardTitle>
+              <CardTitle className="text-sm font-medium">Missions Actives</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{dashboardData?.stats.totalCollections}</div>
               <p className="text-xs text-muted-foreground">
-                Ce mois
+                Assignées aux collecteurs
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Satisfaction</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Temps Réponse</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{dashboardData?.stats.customerSatisfaction}/5</div>
+              <div className="text-2xl font-bold">{dashboardData?.stats.averageResponseTime}h</div>
               <p className="text-xs text-muted-foreground">
-                Note moyenne
+                Temps moyen
               </p>
             </CardContent>
           </Card>

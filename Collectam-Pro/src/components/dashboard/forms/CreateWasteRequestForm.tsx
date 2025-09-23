@@ -40,6 +40,7 @@ interface CreateWasteRequestFormProps {
 }
 
 export function CreateWasteRequestForm({ onSubmit, onCancel, onSuccess }: CreateWasteRequestFormProps) {
+  const router = useRouter();
   const [formData, setFormData] = useState<WasteRequestFormData>({
     wasteType: "",
     description: "",
@@ -57,29 +58,62 @@ export function CreateWasteRequestForm({ onSubmit, onCancel, onSuccess }: Create
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [assignedCollector, setAssignedCollector] = useState<AssignedCollector | null>(null);
 
-  // Get user's location
+  // Get user's location with improved error handling
   const getUserLocation = () => {
     if (!navigator.geolocation) {
       toast.error("La géolocalisation n'est pas supportée par votre navigateur");
+      // Fallback vers Douala
+      const defaultCoords: [number, number] = [9.7679, 4.0511];
+      setCoordinates(defaultCoords);
+      setLocationStatus('success');
       return;
     }
 
     setLocationStatus('loading');
     
+    // Première tentative avec haute précision
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
         setCoordinates(coords);
         setLocationStatus('success');
-        toast.success("Position obtenue avec succès");
-        console.log('📍 Coordonnées obtenues:', coords);
+        console.log('📍 Position obtenue avec haute précision:', coords);
+        toast.success('Position obtenue avec succès');
       },
       (error) => {
-        console.error('❌ Erreur géolocalisation:', error);
-        setLocationStatus('error');
-        toast.error("Impossible d'obtenir votre position");
+        console.warn('⚠️ Erreur haute précision, tentative avec précision normale...', error.message);
+        
+        // Deuxième tentative avec précision normale
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
+            setCoordinates(coords);
+            setLocationStatus('success');
+            console.log('📍 Position obtenue avec précision normale:', coords);
+            toast.success('Position obtenue avec succès');
+          },
+          (error) => {
+            console.error('❌ Erreur géolocalisation finale:', error);
+            setLocationStatus('error');
+            toast.error('Impossible d\'obtenir votre position. Position par défaut utilisée.');
+            
+            // Fallback vers Douala
+            const defaultCoords: [number, number] = [9.7679, 4.0511];
+            setCoordinates(defaultCoords);
+            setLocationStatus('success');
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 15000,
+            maximumAge: 300000
+          }
+        );
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 60000
+      }
     );
   };
 
@@ -153,10 +187,10 @@ export function CreateWasteRequestForm({ onSubmit, onCancel, onSuccess }: Create
       
       // Check if a collector was assigned (from API response)
       // The API returns assignedCollector as a separate field in the response
-      const response = result as any; // Cast to access assignedCollector field
-      if (response.assignedCollector) {
+      const response = result as any; // The service returns created request object
+      if (response?.assignedCollector) {
         setAssignedCollector(response.assignedCollector);
-        toast.success(`Demande créée et assignée au collecteur ${response.assignedCollector.name} !`);
+        toast.success(`Demande créée et assignée au collecteur ${response.assignedCollector.firstName ? `${response.assignedCollector.firstName} ${response.assignedCollector.lastName}` : response.assignedCollector.name || ''} !`);
       } else {
         toast.success("Demande créée avec succès - en attente d'assignation");
       }
@@ -167,6 +201,16 @@ export function CreateWasteRequestForm({ onSubmit, onCancel, onSuccess }: Create
       }
       if (onSuccess) {
         onSuccess();
+      }
+
+      // Redirect user to the real-time map to track their request
+      try {
+        const createdId = (response && (response._id || response.id)) || '';
+        const targetUrl = createdId ? `/dashboard/user/map?focus=${createdId}` : `/dashboard/user/map`;
+        router.push(targetUrl);
+      } catch (e) {
+        console.warn('⚠️ Redirection map échouée, ouverture simple de la carte');
+        router.push('/dashboard/user/map');
       }
       
       // Reset form

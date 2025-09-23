@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { locationService } from "@/services/LocationService";
+import { wasteRequestService } from "@/services/WasteRequestService";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { toast } from "sonner";
 import { 
   MapPin, 
   Navigation, 
@@ -21,6 +24,7 @@ import {
 } from "lucide-react";
 import { InteractiveMap } from "@/components/maps/InteractiveMap";
 import CollectorRouteMap from "@/components/maps/CollectorRouteMap";
+import { useSearchParams } from "next/navigation";
 
 interface CollectionPoint {
   id: string;
@@ -36,10 +40,83 @@ interface CollectionPoint {
 
 export default function CollectorMapPage() {
   const [collections, setCollections] = useState<CollectionPoint[]>([]);
-
   const [currentLocation, setCurrentLocation] = useState<[number, number]>([9.7043, 4.0511]);
   const [selectedCollection, setSelectedCollection] = useState<CollectionPoint | null>(null);
   const [assignedRequests, setAssignedRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
+  const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined);
+  const [recentlyCompleted, setRecentlyCompleted] = useState<any[]>([]);
+
+  // Charger les demandes assignées au collecteur
+  const loadAssignedRequests = async () => {
+    try {
+      console.log('🗑️ Chargement des demandes assignées au collecteur...');
+      const requests = await wasteRequestService.getAssignedRequests();
+      
+      // Formatter les demandes pour la carte
+      const formattedRequests = requests.map(request => ({
+        ...request,
+        // S'assurer que les coordonnées sont au bon format GeoJSON { coordinates: [lng, lat] }
+        coordinates: request.coordinates && Array.isArray(request.coordinates.coordinates)
+          ? { coordinates: request.coordinates.coordinates as [number, number] }
+          : null
+      }));
+      
+      setAssignedRequests(formattedRequests);
+      console.log(`📋 ${formattedRequests.length} demandes assignées chargées`);
+      
+      // Log des coordonnées pour debug
+      formattedRequests.forEach(req => {
+        console.log(`- ${req._id}: ${req.wasteType} à ${req.address}, coords:`, req.coordinates);
+      });
+      
+    } catch (error) {
+      console.error('❌ Erreur chargement demandes assignées:', error);
+      toast.error('Erreur lors du chargement des demandes assignées');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Charger les demandes au montage du composant
+  useEffect(() => {
+    loadAssignedRequests();
+    
+    // Recharger toutes les 30 secondes pour le temps réel
+    const interval = setInterval(loadAssignedRequests, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Center on focused request if provided
+  useEffect(() => {
+    const focusId = searchParams ? searchParams.get('focus') : null;
+    if (focusId && Array.isArray(assignedRequests) && assignedRequests.length > 0) {
+      const target = assignedRequests.find((r: any) => r._id === focusId && r.coordinates && Array.isArray(r.coordinates));
+      if (target && target.coordinates) {
+        setMapCenter(target.coordinates as [number, number]);
+      }
+    }
+  }, [searchParams, assignedRequests]);
+
+  // Intégration WebSocket pour notifications temps réel
+  const { sendLocationUpdate, notifyCollectionStarted, notifyCollectionCompleted } = useWebSocket({
+    onNewWasteRequest: (data) => {
+      console.log('🗑️ Nouvelle demande reçue:', data);
+      toast.info(`Nouvelle collecte assignée: ${data.wasteType}`);
+      // Rafraîchir la liste des demandes
+      loadAssignedRequests();
+    },
+    onCollectionStarted: (data) => {
+      console.log('▶️ Collecte démarrée:', data);
+      toast.success('Collecte démarrée avec succès');
+    },
+    onCollectionCompleted: (data) => {
+      console.log('✅ Collecte terminée:', data);
+      toast.success('Collecte terminée avec succès');
+    }
+  });
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const getPriorityColor = (priority: string) => {
@@ -60,16 +137,43 @@ export default function CollectorMapPage() {
     }
   };
 
-  const startCollection = (collectionId: string) => {
-    setCollections(prev => prev.map(c => 
-      c.id === collectionId ? { ...c, status: 'in_progress' as const } : c
-    ));
+  const startCollection = async (collectionId: string) => {
+    try {
+      // Call backend to mark as in_progress
+      await wasteRequestService.startCollection(collectionId);
+      notifyCollectionStarted(collectionId);
+      // Refresh assigned requests list
+      await loadAssignedRequests();
+      // Update local demo collections if any
+      setCollections(prev => prev.map(c => 
+        c.id === collectionId ? { ...c, status: 'in_progress' as const } : c
+      ));
+    } catch (e) {
+      console.error('❌ Échec démarrage collecte:', e);
+    }
   };
 
-  const completeCollection = (collectionId: string) => {
-    setCollections(prev => prev.map(c => 
-      c.id === collectionId ? { ...c, status: 'completed' as const } : c
-    ));
+  const completeCollection = async (collectionId: string) => {
+    try {
+      // In a real flow we'd pass actual weight, here we keep it optional
+      await wasteRequestService.completeCollection(collectionId, {});
+      notifyCollectionCompleted(collectionId);
+      // Keep a temporary green marker on map for a few seconds
+      const justCompleted = assignedRequests.find((r: any) => r._id === collectionId);
+      if (justCompleted && justCompleted.coordinates) {
+        const tmp = { ...justCompleted, status: 'completed' as const };
+        setRecentlyCompleted(prev => [...prev, tmp]);
+        setTimeout(() => {
+          setRecentlyCompleted(prev => prev.filter((r) => r._id !== collectionId));
+        }, 6000);
+      }
+      await loadAssignedRequests();
+      setCollections(prev => prev.map(c => 
+        c.id === collectionId ? { ...c, status: 'completed' as const } : c
+      ));
+    } catch (e) {
+      console.error('❌ Échec finalisation collecte:', e);
+    }
   };
 
   const pendingCollections = collections.filter(c => c.status === 'pending');
@@ -93,6 +197,10 @@ export default function CollectorMapPage() {
 
         // Envoyer la position au serveur
         await locationService.updateCollectorLocation(position);
+        // Émettre aussi via WebSocket pour temps réel household
+        try {
+          sendLocationUpdate([position.longitude, position.latitude], position.accuracy);
+        } catch {}
         
         console.log('📍 Position collecteur synchronisée:', position);
       } catch (error) {
@@ -118,6 +226,7 @@ export default function CollectorMapPage() {
         // Envoyer la nouvelle position au serveur
         try {
           await locationService.updateCollectorLocation(position);
+          try { sendLocationUpdate([position.longitude, position.latitude], position.accuracy); } catch {}
           console.log('📍 Position temps réel synchronisée:', position);
         } catch (error) {
           console.error('❌ Erreur sync temps réel:', error);
@@ -240,8 +349,10 @@ export default function CollectorMapPage() {
 
       {/* Carte de Route Interactive MapTiler */}
       <CollectorRouteMap 
-        assignedRequests={assignedRequests}
+        assignedRequests={[...assignedRequests, ...recentlyCompleted]}
         collectorLocation={currentLocation}
+        center={mapCenter}
+        highlightMarkerId={(searchParams && searchParams.get('focus')) ? `request-${searchParams.get('focus')}` : undefined}
         onStartCollection={(requestId) => {
           console.log('Démarrer collecte:', requestId);
           startCollection(requestId);

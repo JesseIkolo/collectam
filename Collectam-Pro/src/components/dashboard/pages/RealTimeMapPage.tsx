@@ -23,11 +23,14 @@ import { InteractiveMap } from "@/components/maps/InteractiveMap";
 import HouseholdTrackingMap from "@/components/maps/HouseholdTrackingMap";
 import { mapService, CollectorLocation, WasteCollection } from "@/services/MapService";
 import { locationService } from "@/services/LocationService";
+import { wasteRequestService } from "@/services/WasteRequestService";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import { ColumnDef, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
+import { useSearchParams } from "next/navigation";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface MapFilters {
   status: string;
@@ -50,6 +53,39 @@ export function RealTimeMapPage() {
   const [selectedCollector, setSelectedCollector] = useState<CollectorLocation | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined);
+  const searchParams = useSearchParams();
+
+  // WebSocket real-time handlers at top-level
+  useWebSocket({
+    onCollectorAssigned: () => {
+      loadMapData();
+    },
+    onCollectorLocationUpdate: (data: any) => {
+      setWasteRequestsForMap((prev) => prev.map((req: any) => {
+        if (req.assignedCollector && (req.assignedCollector._id === data.collectorId || req.assignedCollector === data.collectorId)) {
+          return {
+            ...req,
+            assignedCollector: {
+              ...req.assignedCollector,
+              lastLocation: { coordinates: data.coordinates }
+            }
+          };
+        }
+        return req;
+      }));
+    },
+    onCollectionStarted: (data: any) => {
+      setWasteRequestsForMap((prev) => prev.map((req: any) => (
+        req._id === data.requestId ? { ...req, status: 'in_progress' } : req
+      )));
+    },
+    onCollectionCompleted: (data: any) => {
+      setWasteRequestsForMap((prev) => prev.map((req: any) => (
+        req._id === data.requestId ? { ...req, status: 'completed' } : req
+      )));
+    }
+  });
 
   useEffect(() => {
     loadMapData();
@@ -63,7 +99,62 @@ export function RealTimeMapPage() {
     return () => {
       if (interval) clearInterval(interval);
     };
+
   }, [autoRefresh]);
+
+  const loadUserWasteRequests = async () => {
+    try {
+      console.log('🗑️ Chargement des demandes utilisateur...');
+      const userRequests = await wasteRequestService.getUserRequests();
+      
+      if (!userRequests || !Array.isArray(userRequests)) {
+        console.warn('⚠️ Aucune demande reçue ou format incorrect');
+        return [];
+      }
+      
+      // Convertir au format attendu par la carte avec validation des coordonnées
+      const formattedRequests = userRequests.map(request => {
+        // Valider les coordonnées
+        let validCoordinates = null;
+        
+        if (request.coordinates && Array.isArray(request.coordinates) && request.coordinates.length === 2) {
+          const [lng, lat] = request.coordinates;
+          // Vérifier que les coordonnées sont des nombres valides
+          if (typeof lng === 'number' && typeof lat === 'number' && 
+              !isNaN(lng) && !isNaN(lat) && 
+              lng >= -180 && lng <= 180 && 
+              lat >= -90 && lat <= 90) {
+            validCoordinates = {
+              coordinates: [lng, lat]
+            };
+          } else {
+            console.warn(`⚠️ Coordonnées invalides pour la demande ${request._id}:`, request.coordinates);
+          }
+        } else {
+          console.warn(`⚠️ Coordonnées manquantes ou format incorrect pour la demande ${request._id}:`, request.coordinates);
+        }
+
+        return {
+          _id: request._id,
+          wasteType: request.wasteType,
+          status: request.status,
+          address: request.address,
+          coordinates: validCoordinates,
+          assignedCollector: request.assignedCollector,
+          preferredDate: request.preferredDate,
+          preferredTime: request.preferredTime,
+          estimatedWeight: request.estimatedWeight,
+          description: request.description || ''
+        };
+      });
+
+      console.log(`📋 ${formattedRequests.length} demandes chargées pour la carte`);
+      return formattedRequests;
+    } catch (error) {
+      console.error('❌ Erreur chargement demandes:', error);
+      return [];
+    }
+  };
 
   const loadMapData = async () => {
     try {
@@ -87,16 +178,24 @@ export function RealTimeMapPage() {
         lastUpdate: collector.lastUpdate
       }));
 
-      // Pour l'instant, pas de collections mockées - utiliser les vraies données
+      // Pas de collections mockées - tout à zéro
       const mockCollections: WasteCollection[] = [];
 
-      // Récupérer les demandes de l'utilisateur avec collecteurs assignés
-      // TODO: Implémenter l'API pour récupérer les demandes avec collecteurs
-      const wasteRequestsWithCollectors: any[] = [];
+      // Récupérer les vraies demandes de l'utilisateur avec collecteurs assignés
+      const wasteRequestsWithCollectors = await loadUserWasteRequests();
       
       setCollectors(collectorsData);
       setCollections(mockCollections);
       setWasteRequestsForMap(wasteRequestsWithCollectors);
+      
+      // Center on focused request if provided via query param
+      const focusId = searchParams ? searchParams.get('focus') : null;
+      if (focusId) {
+        const target = wasteRequestsWithCollectors.find((r: any) => r._id === focusId && r.coordinates && r.coordinates.coordinates && Array.isArray(r.coordinates.coordinates));
+        if (target && target.coordinates && target.coordinates.coordinates) {
+          setMapCenter(target.coordinates.coordinates as [number, number]);
+        }
+      }
       
       console.log('📍 Collecteurs actifs chargés:', collectorsData.length);
     } catch (err) {
@@ -545,6 +644,8 @@ export function RealTimeMapPage() {
       {/* Carte de Suivi des Collectes MapTiler */}
       <HouseholdTrackingMap 
         wasteRequests={wasteRequestsForMap}
+        center={mapCenter}
+        highlightMarkerId={(searchParams && searchParams.get('focus')) ? `request-${searchParams.get('focus')}` : undefined}
         onRequestSelect={(request) => {
           console.log('Demande sélectionnée:', request);
           // Vous pouvez ajouter ici la logique pour afficher les détails de la demande

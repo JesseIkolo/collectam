@@ -20,6 +20,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import HouseholdTrackingMap from '@/components/maps/HouseholdTrackingMap';
+import { wasteRequestService } from '@/services/WasteRequestService';
+import { mapService } from '@/services/MapService';
 
 interface CollectionRequest {
   id: string;
@@ -53,6 +56,8 @@ interface MapStats {
 
 export default function EnterpriseMapPage() {
   const [requests, setRequests] = useState<CollectionRequest[]>([]);
+  const [wasteRequestsForMap, setWasteRequestsForMap] = useState<any[]>([]);
+  const [collectors, setCollectors] = useState<any[]>([]);
   const [stats, setStats] = useState<MapStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
@@ -66,99 +71,148 @@ export default function EnterpriseMapPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const loadMapData = async () => {
-    setRefreshing(true);
-    // Simulate API call
-    setTimeout(() => {
-      setRequests([
-        {
-          id: '1',
-          wasteType: 'Papier/Carton',
-          quantity: 50,
-          unit: 'kg',
-          address: 'Avenue Léopold Sédar Senghor, Dakar',
-          coordinates: [14.6937, -17.4441],
-          status: 'en_route',
-          priority: 'medium',
-          scheduledDate: '2024-01-25',
-          scheduledTime: '14:00',
-          collector: {
-            id: 'c1',
-            name: 'Mamadou Diallo',
-            phone: '+221 77 123 45 67',
-            vehicle: 'Camion - DK-2024-AB',
-            currentLocation: [14.6892, -17.4385],
-            estimatedArrival: '15 minutes'
-          },
-          createdAt: '2024-01-20T10:00:00Z'
-        },
-        {
-          id: '2',
-          wasteType: 'Électronique',
-          quantity: 10,
-          unit: 'unités',
-          address: 'Zone Industrielle, Dakar',
-          coordinates: [14.7167, -17.4677],
-          status: 'assigned',
-          priority: 'high',
-          scheduledDate: '2024-01-25',
-          scheduledTime: '16:00',
-          collector: {
-            id: 'c2',
-            name: 'Fatou Sall',
-            phone: '+221 76 987 65 43',
-            vehicle: 'Fourgon - DK-2024-CD',
-            currentLocation: [14.7200, -17.4500],
-            estimatedArrival: '45 minutes'
-          },
-          createdAt: '2024-01-21T14:30:00Z'
-        },
-        {
-          id: '3',
-          wasteType: 'Plastique',
-          quantity: 25,
-          unit: 'kg',
-          address: 'Plateau, Dakar',
-          coordinates: [14.6928, -17.4467],
-          status: 'completed',
-          priority: 'low',
-          scheduledDate: '2024-01-25',
-          scheduledTime: '10:00',
-          collector: {
-            id: 'c3',
-            name: 'Ousmane Ba',
-            phone: '+221 78 456 78 90',
-            vehicle: 'Camionnette - DK-2024-EF',
-            currentLocation: [14.6928, -17.4467]
-          },
-          createdAt: '2024-01-24T08:00:00Z',
-          completedAt: '2024-01-25T10:30:00Z'
-        },
-        {
-          id: '4',
-          wasteType: 'Organique',
-          quantity: 75,
-          unit: 'kg',
-          address: 'Almadies, Dakar',
-          coordinates: [14.7458, -17.5186],
-          status: 'pending',
-          priority: 'urgent',
-          scheduledDate: '2024-01-25',
-          scheduledTime: '18:00',
-          createdAt: '2024-01-25T12:00:00Z'
+  const loadUserWasteRequests = async () => {
+    try {
+      console.log('🏢 Chargement des demandes entreprise...');
+      const userRequests = await wasteRequestService.getUserRequests();
+      
+      if (!userRequests || !Array.isArray(userRequests)) {
+        console.warn('⚠️ Aucune demande reçue ou format incorrect');
+        return [];
+      }
+      
+      // Convertir au format attendu par la carte avec validation des coordonnées
+      const formattedRequests = userRequests.map(request => {
+        // Valider les coordonnées
+        let validCoordinates = null;
+        
+        if (request.coordinates && Array.isArray(request.coordinates) && request.coordinates.length === 2) {
+          const [lng, lat] = request.coordinates;
+          // Vérifier que les coordonnées sont des nombres valides
+          if (typeof lng === 'number' && typeof lat === 'number' && 
+              !isNaN(lng) && !isNaN(lat) && 
+              lng >= -180 && lng <= 180 && 
+              lat >= -90 && lat <= 90) {
+            validCoordinates = {
+              coordinates: [lng, lat]
+            };
+          } else {
+            console.warn(`⚠️ Coordonnées invalides pour la demande ${request._id}:`, request.coordinates);
+          }
+        } else {
+          console.warn(`⚠️ Coordonnées manquantes ou format incorrect pour la demande ${request._id}:`, request.coordinates);
         }
-      ]);
 
-      setStats({
-        totalRequests: 4,
-        activeCollections: 2,
-        completedToday: 1,
-        averageResponseTime: '2h 15min'
+        return {
+          _id: request._id,
+          wasteType: request.wasteType,
+          status: request.status,
+          address: request.address,
+          coordinates: validCoordinates,
+          assignedCollector: request.assignedCollector,
+          preferredDate: request.preferredDate,
+          preferredTime: request.preferredTime,
+          estimatedWeight: request.estimatedWeight,
+          description: request.description || ''
+        };
       });
 
+      console.log(`📋 ${formattedRequests.length} demandes entreprise chargées pour la carte`);
+      return formattedRequests;
+    } catch (error) {
+      console.error('❌ Erreur chargement demandes entreprise:', error);
+      return [];
+    }
+  };
+
+  const loadMapData = async () => {
+    try {
+      setRefreshing(true);
+      setLoading(true);
+      
+      console.log('🏢 Chargement des données de la carte entreprise...');
+      
+      // Charger les collecteurs actifs
+      const collectorsData = await mapService.getActiveCollectors();
+      console.log('🚛 Collecteurs actifs chargés:', collectorsData.length);
+      
+      // Charger les demandes de l'utilisateur entreprise
+      const wasteRequestsWithCollectors = await loadUserWasteRequests();
+      
+      // Convertir les demandes au format attendu par l'interface
+      const formattedRequests = wasteRequestsWithCollectors.map((request: any) => ({
+        id: request._id,
+        wasteType: request.wasteType || 'Non spécifié',
+        quantity: request.estimatedWeight || 0,
+        unit: 'kg',
+        address: request.address || 'Adresse non spécifiée',
+        coordinates: request.coordinates?.coordinates || [9.7043, 4.0511], // Fallback Douala
+        status: mapRequestStatus(request.status),
+        priority: mapPriority(request.urgency || 'medium'),
+        scheduledDate: request.preferredDate || new Date().toISOString().split('T')[0],
+        scheduledTime: request.preferredTime || '10:00',
+        collector: request.assignedCollector ? {
+          id: request.assignedCollector._id || request.assignedCollector,
+          name: request.assignedCollector.firstName && request.assignedCollector.lastName 
+            ? `${request.assignedCollector.firstName} ${request.assignedCollector.lastName}`
+            : 'Collecteur assigné',
+          phone: request.assignedCollector.phone || '+237 XXX XXX XXX',
+          vehicle: 'Véhicule de collecte',
+          currentLocation: request.assignedCollector.lastLocation?.coordinates || [9.7043, 4.0511],
+          estimatedArrival: '15 minutes'
+        } : undefined,
+        createdAt: request.createdAt || new Date().toISOString()
+      }));
+      
+      // Calculer les statistiques
+      const totalRequests = formattedRequests.length;
+      const activeCollections = formattedRequests.filter(r => 
+        ['assigned', 'en_route', 'arrived', 'collecting'].includes(r.status)
+      ).length;
+      const completedToday = formattedRequests.filter(r => 
+        r.status === 'completed' && 
+        new Date(r.createdAt).toDateString() === new Date().toDateString()
+      ).length;
+      
+      setCollectors(collectorsData);
+      setWasteRequestsForMap(wasteRequestsWithCollectors);
+      setRequests(formattedRequests as CollectionRequest[]);
+      setStats({
+        totalRequests,
+        activeCollections,
+        completedToday,
+        averageResponseTime: '2h 15min'
+      });
+      
+      console.log(`📊 Statistiques entreprise: ${totalRequests} demandes, ${activeCollections} actives`);
+      
+    } catch (error) {
+      console.error('❌ Erreur chargement données carte entreprise:', error);
+    } finally {
       setLoading(false);
       setRefreshing(false);
-    }, 1000);
+    }
+  };
+
+  // Fonctions de mapping des statuts
+  const mapRequestStatus = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'pending',
+      'scheduled': 'assigned',
+      'in_progress': 'collecting',
+      'completed': 'completed',
+      'cancelled': 'completed'
+    };
+    return statusMap[status] || 'pending';
+  };
+
+  const mapPriority = (urgency: string) => {
+    const priorityMap: { [key: string]: string } = {
+      'low': 'low',
+      'medium': 'medium',
+      'high': 'high'
+    };
+    return priorityMap[urgency] || 'medium';
   };
 
   const getStatusBadge = (status: string) => {
@@ -301,47 +355,30 @@ export default function EnterpriseMapPage() {
         </div>
       )}
 
-      {/* Map and List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Map Placeholder */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Carte Interactive
-            </CardTitle>
-            <CardDescription>
-              Positions des collecteurs et points de collecte
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-500 mb-2">Carte Interactive</p>
-                <p className="text-sm text-gray-400">
-                  Intégration Google Maps/OpenStreetMap à venir
-                </p>
-                <div className="mt-4 space-y-2 text-left">
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    <span>Demandes en attente</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                    <span>Collecteurs en route</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span>Collectes terminées</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Carte Interactive Pleine Largeur */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="w-5 h-5" />
+            Carte Interactive Entreprise
+          </CardTitle>
+          <CardDescription>
+            Suivi en temps réel de vos collectes et collecteurs
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[600px] rounded-lg overflow-hidden">
+            <HouseholdTrackingMap 
+              wasteRequests={wasteRequestsForMap}
+              onRequestSelect={(request) => setSelectedRequest(request._id)}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Requests List */}
+      {/* Liste des Demandes */}
+      <div className="grid grid-cols-1 gap-6">
+
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">

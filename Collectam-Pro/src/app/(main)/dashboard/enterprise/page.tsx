@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AuthService } from '@/lib/auth';
+import { CustomPieChart, ProgressRing, DonutChart, CustomLineChart } from '@/components/charts';
 import { 
   Building2, 
   Users, 
@@ -65,6 +66,7 @@ interface EnterpriseDashboardData {
     date: string;
     status: string;
   }[];
+  trend30Days?: { name: string; value: number }[];
 }
 
 export default function EnterprisePage() {
@@ -72,69 +74,169 @@ export default function EnterprisePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Récupérer les données utilisateur réelles
-    const currentUser = AuthService.getUser();
-    
-    // Simuler des données entreprise avec les vraies infos utilisateur
-    setTimeout(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      console.log('🏢 Chargement des données dashboard entreprise...');
+      
+      // Récupérer les données utilisateur réelles
+      const currentUser = AuthService.getUser();
+      const token = localStorage.getItem('accessToken');
+
+      // Récupérer les données réelles de l'entreprise
+      const [wasteRequestsResponse, statsResponse, complianceResponse] = await Promise.allSettled([
+        fetch('/api/waste-collection-requests/user', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/enterprise/stats', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/enterprise/compliance', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      // Traiter les demandes de collecte
+      let wasteRequests = [];
+      if (wasteRequestsResponse.status === 'fulfilled' && wasteRequestsResponse.value.ok) {
+        const wasteRequestsResult = await wasteRequestsResponse.value.json();
+        wasteRequests = wasteRequestsResult.data || [];
+      }
+
+      // Traiter les statistiques
+      let enterpriseStats: any = {};
+      if (statsResponse.status === 'fulfilled' && statsResponse.value.ok) {
+        const statsResult = await statsResponse.value.json();
+        enterpriseStats = statsResult.data || {};
+      }
+
+      // Traiter les données de conformité
+      let complianceData: any = {};
+      if (complianceResponse.status === 'fulfilled' && complianceResponse.value.ok) {
+        const complianceResult = await complianceResponse.value.json();
+        complianceData = complianceResult.data || {};
+      }
+
+      // Calculer les métriques réelles
+      const totalVolume = wasteRequests.reduce((sum: number, req: any) => sum + (req.estimatedWeight || 0), 0);
+      const monthlyVolume = wasteRequests
+        .filter((req: any) => new Date(req.createdAt).getMonth() === new Date().getMonth())
+        .reduce((sum: number, req: any) => sum + (req.estimatedWeight || 0), 0);
+
+      const collections = {
+        scheduled: wasteRequests.filter((req: any) => req.status === 'scheduled').length,
+        completed: wasteRequests.filter((req: any) => req.status === 'completed').length,
+        pending: wasteRequests.filter((req: any) => req.status === 'pending').length,
+        cancelled: wasteRequests.filter((req: any) => req.status === 'cancelled').length
+      };
+
+      // Calculer la répartition des types de déchets
+      const wasteTypeCounts = wasteRequests.reduce((acc: any, req: any) => {
+        const type = req.wasteType || 'general';
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {});
+
+      const totalRequests = wasteRequests.length;
+      const wasteTypes = {
+        organic: Math.round(((wasteTypeCounts.organic || 0) / totalRequests) * 100) || 0,
+        recyclable: Math.round(((wasteTypeCounts.plastic + wasteTypeCounts.paper + wasteTypeCounts.glass + wasteTypeCounts.metal || 0) / totalRequests) * 100) || 0,
+        hazardous: Math.round(((wasteTypeCounts.hazardous || 0) / totalRequests) * 100) || 0,
+        general: Math.round(((wasteTypeCounts.mixed || wasteTypeCounts.other || 0) / totalRequests) * 100) || 0
+      };
+
+      // Créer les activités récentes basées sur les vraies données
+      const recentActivities = wasteRequests
+        .slice(0, 3)
+        .map((req: any, index: number) => ({
+          id: req._id || `activity-${index}`,
+          type: "collection",
+          description: `Collecte ${req.wasteType} - ${req.address?.substring(0, 30)}...`,
+          date: req.createdAt || new Date().toISOString(),
+          status: req.status || "pending"
+        }));
+
+      // Build 30-day trend of number of requests per day
+      const days = Array.from({ length: 30 }).map((_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (29 - i));
+        const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+        const label = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+        const count = wasteRequests.filter((req: any) => (req.createdAt || '').startsWith(key)).length;
+        return { name: label, value: count };
+      });
+
       setDashboardData({
         company: {
           name: currentUser?.companyName || `${currentUser?.firstName} ${currentUser?.lastName}`,
-          siret: "12345678901234",
-          sector: "Technologie",
-          employees: 150,
-          sites: 3
+          siret: currentUser?.siret || "Non renseigné",
+          sector: currentUser?.sector || "Non spécifié",
+          employees: enterpriseStats.employees || 1,
+          sites: enterpriseStats.sites || 1
         },
         wasteManagement: {
-          totalVolume: 2450,
-          monthlyVolume: 320,
-          wasteTypes: {
-            organic: 30,
-            recyclable: 45,
-            hazardous: 10,
-            general: 15
-          },
-          costSavings: 15600
+          totalVolume,
+          monthlyVolume,
+          wasteTypes,
+          costSavings: enterpriseStats.costSavings || Math.round(totalVolume * 2.5) // Estimation
+        },
+        collections,
+        sustainability: {
+          carbonReduction: Math.round(totalVolume * 0.8), // Estimation basée sur le poids
+          recyclingRate: complianceData.recyclingRate || Math.min(95, Math.round((wasteTypes.recyclable / 100) * 100)),
+          complianceScore: complianceData.complianceScore || 85,
+          certifications: complianceData.certifications || []
+        },
+        recentActivities,
+        trend30Days: days
+      });
+
+      console.log('✅ Données dashboard entreprise chargées:', {
+        totalRequests: wasteRequests.length,
+        totalVolume,
+        collections
+      });
+
+    } catch (error) {
+      console.error('❌ Erreur chargement dashboard entreprise:', error);
+      
+      // Fallback avec données minimales
+      const currentUser = AuthService.getUser();
+      setDashboardData({
+        company: {
+          name: currentUser?.companyName || `${currentUser?.firstName} ${currentUser?.lastName}`,
+          siret: "Non renseigné",
+          sector: "Non spécifié",
+          employees: 1,
+          sites: 1
+        },
+        wasteManagement: {
+          totalVolume: 0,
+          monthlyVolume: 0,
+          wasteTypes: { organic: 0, recyclable: 0, hazardous: 0, general: 0 },
+          costSavings: 0
         },
         collections: {
-          scheduled: 12,
-          completed: 8,
-          pending: 3,
-          cancelled: 1
+          scheduled: 0,
+          completed: 0,
+          pending: 0,
+          cancelled: 0
         },
         sustainability: {
-          carbonReduction: 1250,
-          recyclingRate: 78,
-          complianceScore: 92,
-          certifications: ["ISO 14001", "OHSAS 18001"]
+          carbonReduction: 0,
+          recyclingRate: 0,
+          complianceScore: 0,
+          certifications: []
         },
-        recentActivities: [
-          {
-            id: "1",
-            type: "collection",
-            description: "Collecte programmée - Site Principal",
-            date: "2024-01-15T09:00:00Z",
-            status: "completed"
-          },
-          {
-            id: "2",
-            type: "report",
-            description: "Rapport mensuel généré",
-            date: "2024-01-14T16:30:00Z",
-            status: "completed"
-          },
-          {
-            id: "3",
-            type: "audit",
-            description: "Audit de conformité prévu",
-            date: "2024-01-20T14:00:00Z",
-            status: "scheduled"
-          }
-        ]
+        recentActivities: []
       });
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
 
   if (loading) {
     return (
@@ -232,9 +334,13 @@ export default function EnterprisePage() {
             <CardTitle className="text-sm font-medium">Taux de Recyclage</CardTitle>
             <Recycle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{dashboardData?.sustainability.recyclingRate}%</div>
-            <Progress value={dashboardData?.sustainability.recyclingRate} className="mt-2" />
+          <CardContent className="flex justify-center">
+            <ProgressRing
+              value={dashboardData?.sustainability.recyclingRate || 0}
+              size={100}
+              color="#10b981"
+              label="Recyclage"
+            />
           </CardContent>
         </Card>
 
@@ -256,9 +362,13 @@ export default function EnterprisePage() {
             <CardTitle className="text-sm font-medium">Score Conformité</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{dashboardData?.sustainability.complianceScore}/100</div>
-            <Progress value={dashboardData?.sustainability.complianceScore} className="mt-2" />
+          <CardContent className="flex justify-center">
+            <ProgressRing
+              value={dashboardData?.sustainability.complianceScore || 0}
+              size={100}
+              color="#3b82f6"
+              label="Conformité"
+            />
           </CardContent>
         </Card>
       </div>
@@ -280,35 +390,32 @@ export default function EnterprisePage() {
                 <CardTitle>Répartition des Déchets</CardTitle>
                 <CardDescription>Distribution par type de déchet</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm">Recyclable</span>
-                    <span className="text-sm font-medium">{dashboardData?.wasteManagement.wasteTypes.recyclable}%</span>
-                  </div>
-                  <Progress value={dashboardData?.wasteManagement.wasteTypes.recyclable} />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm">Organique</span>
-                    <span className="text-sm font-medium">{dashboardData?.wasteManagement.wasteTypes.organic}%</span>
-                  </div>
-                  <Progress value={dashboardData?.wasteManagement.wasteTypes.organic} />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm">Général</span>
-                    <span className="text-sm font-medium">{dashboardData?.wasteManagement.wasteTypes.general}%</span>
-                  </div>
-                  <Progress value={dashboardData?.wasteManagement.wasteTypes.general} />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm">Dangereux</span>
-                    <span className="text-sm font-medium">{dashboardData?.wasteManagement.wasteTypes.hazardous}%</span>
-                  </div>
-                  <Progress value={dashboardData?.wasteManagement.wasteTypes.hazardous} className="bg-red-100" />
-                </div>
+              <CardContent>
+                <CustomPieChart
+                  data={[
+                    { 
+                      name: 'Recyclable', 
+                      value: dashboardData?.wasteManagement.wasteTypes.recyclable || 0, 
+                      color: '#10b981' 
+                    },
+                    { 
+                      name: 'Organique', 
+                      value: dashboardData?.wasteManagement.wasteTypes.organic || 0, 
+                      color: '#84cc16' 
+                    },
+                    { 
+                      name: 'Général', 
+                      value: dashboardData?.wasteManagement.wasteTypes.general || 0, 
+                      color: '#6b7280' 
+                    },
+                    { 
+                      name: 'Dangereux', 
+                      value: dashboardData?.wasteManagement.wasteTypes.hazardous || 0, 
+                      color: '#ef4444' 
+                    }
+                  ].filter(item => item.value > 0)}
+                  size="md"
+                />
               </CardContent>
             </Card>
 
@@ -337,43 +444,41 @@ export default function EnterprisePage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* 30-day Requests Trend */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tendance des demandes (30 jours)</CardTitle>
+              <CardDescription>Nombre de demandes créées par jour</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CustomLineChart
+                data={dashboardData?.trend30Days || []}
+                color="#3b82f6"
+                height={260}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="collections" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Programmées</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{dashboardData?.collections.scheduled}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Terminées</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{dashboardData?.collections.completed}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">En Attente</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{dashboardData?.collections.pending}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Annulées</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">{dashboardData?.collections.cancelled}</div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Statut des Collectes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DonutChart
+                data={[
+                  { name: 'Terminées', value: dashboardData?.collections.completed || 0, color: '#10b981' },
+                  { name: 'Programmées', value: dashboardData?.collections.scheduled || 0, color: '#3b82f6' },
+                  { name: 'En Attente', value: dashboardData?.collections.pending || 0, color: '#f59e0b' },
+                  { name: 'Annulées', value: dashboardData?.collections.cancelled || 0, color: '#ef4444' }
+                ].filter(item => item.value > 0)}
+                size="md"
+                centerText={`${(dashboardData?.collections.completed || 0) + (dashboardData?.collections.scheduled || 0) + (dashboardData?.collections.pending || 0) + (dashboardData?.collections.cancelled || 0)}`}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="sustainability" className="space-y-4">

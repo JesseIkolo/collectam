@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const BusinessController = require('../controllers/BusinessController');
+const { getBusinessStats } = require('../controllers/businessStatsController');
 const { authenticateToken } = require('../middlewares/auth');
+const { validateBusinessUser } = require('../middlewares/businessValidation');
 const { body } = require('express-validator');
 
 // Routes for individual business subscriptions (not organization-based)
@@ -30,5 +32,8 @@ router.delete('/fleet/vehicles/:vehicleId/collector', BusinessController.removeC
 router.delete('/account', [
     body('password').isLength({ min: 8 })
 ], BusinessController.deleteAccount);
+
+// Get business statistics
+router.get('/stats', validateBusinessUser, getBusinessStats);
 
 module.exports = router;

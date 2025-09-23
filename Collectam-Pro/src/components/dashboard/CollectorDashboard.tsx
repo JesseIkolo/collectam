@@ -10,7 +10,7 @@ import { QrCode, Camera, AlertTriangle, Play, Pause, Truck, Award, MapPin, Navig
 import { dashboardService, DashboardData } from "@/services/DashboardService";
 import { wasteRequestService, CollectorStats } from "@/services/WasteRequestService";
 import { AssignedRequestsSection } from "./AssignedRequestsSection";
-import { InteractiveMap } from "@/components/maps/InteractiveMap";
+import { ProgressRing, DonutChart } from "@/components/charts";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import CollectorMapPage from "./pages/collecteur/CollectorMapPage";
@@ -60,6 +60,15 @@ export function CollectorDashboard() {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshCollectorStats = async () => {
+    try {
+      const data = await wasteRequestService.getCollectorStats();
+      setCollectorStats(data);
+    } catch (err) {
+      console.warn('Failed to refresh collector stats:', err);
     }
   };
 
@@ -123,6 +132,27 @@ export function CollectorDashboard() {
           </Badge>
         </div>
       </div>
+
+      {/* Répartition des statuts (collecteur) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Route className="h-4 w-4" />
+            Répartition des statuts
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DonutChart
+            data={[
+              { name: 'Terminées', value: collectorStats?.completed || 0, color: '#10b981' },
+              { name: 'En cours', value: collectorStats?.inProgress || 0, color: '#3b82f6' },
+              { name: 'Programmées', value: collectorStats?.scheduled || 0, color: '#f59e0b' }
+            ].filter(item => item.value > 0)}
+            size="sm"
+            centerText={`${(collectorStats?.completed || 0) + (collectorStats?.inProgress || 0) + (collectorStats?.scheduled || 0)}`}
+          />
+        </CardContent>
+      </Card>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -291,11 +321,11 @@ export function CollectorDashboard() {
                 </div>
               </div>
 
-              {(vehicle?.maintenanceStatus === 'due' || Math.random() > 0.7) && (
+              {vehicle?.maintenanceStatus === 'due' && (
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    Maintenance programmée dans 500 km
+                    Maintenance programmée dans {vehicle?.maintenanceKm || 500} km
                   </AlertDescription>
                 </Alert>
               )}
@@ -336,7 +366,7 @@ export function CollectorDashboard() {
 
 
       {/* Demandes assignées */}
-      <AssignedRequestsSection className="col-span-full" />
+      <AssignedRequestsSection className="col-span-full" onUpdate={refreshCollectorStats} />
 
       {/* Performance et Récompenses */}
       <div className="grid gap-6 md:grid-cols-2">
@@ -348,28 +378,13 @@ export function CollectorDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-muted/50 rounded-lg">
-                  <p className="text-2xl font-bold text-green-600">{collectorStats?.completed || 0}</p>
-                  <p className="text-sm text-muted-foreground">Collectes terminées</p>
-                </div>
-                <div className="text-center p-3 bg-muted/50 rounded-lg">
-                  <p className="text-2xl font-bold text-blue-600">{collectorStats?.totalWeight?.toFixed(0) || 0} kg</p>
-                  <p className="text-sm text-muted-foreground">Déchets collectés</p>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Taux de réussite</span>
-                  <span>{collectorStats?.completionRate || 0}%</span>
-                </div>
-                <Progress value={collectorStats?.completionRate || 0} className="w-full" />
-                <p className="text-xs text-muted-foreground">
-                  {collectorStats?.completed || 0}/{collectorStats?.totalAssigned || 0} demandes terminées
-                </p>
-              </div>
+            <div className="flex justify-center">
+              <ProgressRing
+                value={collectorStats?.completionRate || 0}
+                size={120}
+                color="#10b981"
+                label={`${collectorStats?.completed || 0}/${collectorStats?.totalAssigned || 0} terminées`}
+              />
             </div>
           </CardContent>
         </Card>
@@ -385,8 +400,8 @@ export function CollectorDashboard() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium">Superviseur</p>
-                  <p className="text-sm text-muted-foreground">Jean Mballa</p>
+                  <p className="font-medium">Support Technique</p>
+                  <p className="text-sm text-muted-foreground">Assistance 24/7</p>
                 </div>
                 <Button size="sm" variant="outline">
                   Contacter
@@ -395,8 +410,8 @@ export function CollectorDashboard() {
               
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium">Équipe du jour</p>
-                  <p className="text-sm text-muted-foreground">5 collecteurs actifs</p>
+                  <p className="font-medium">Statut Service</p>
+                  <p className="text-sm text-muted-foreground">Système opérationnel</p>
                 </div>
                 <Badge variant="default">En ligne</Badge>
               </div>

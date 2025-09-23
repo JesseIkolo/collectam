@@ -6,55 +6,93 @@ const User = require('../models/User');
  */
 const getActiveCollectors = async (req, res) => {
   try {
-    // Mock data for now - in a real implementation, this would query active collectors
-    const mockCollectors = [
-      {
-        id: '1',
-        name: 'Jean Dupont',
-        vehicleType: 'Camion de collecte',
-        currentLocation: 'Akwa, Douala',
-        coordinates: {
-          lat: 4.0511,
-          lng: 9.7043
-        },
-        onDuty: true,
-        phone: '+237690123456',
-        lastUpdate: new Date().toISOString()
+    console.log('🚛 Récupération collecteurs actifs');
+    
+    // Récupérer les vrais collecteurs actifs de la base de données
+    const activeCollectors = await User.find({
+      userType: 'collecteur',
+      onDuty: true,
+      'lastLocation.coordinates': { $exists: true, $ne: [] }
+    }).select('firstName lastName phone lastLocation onDuty updatedAt');
+
+    console.log(`📋 ${activeCollectors.length} collecteurs actifs trouvés`);
+
+    // Formatter les données pour la carte
+    const formattedCollectors = activeCollectors.map(collector => ({
+      collectorId: collector._id.toString(),
+      name: `${collector.firstName} ${collector.lastName}`,
+      location: {
+        type: 'Point',
+        coordinates: collector.lastLocation.coordinates
       },
-      {
-        id: '2',
-        name: 'Marie Ngono',
-        vehicleType: 'Tricycle électrique',
-        currentLocation: 'Bonanjo, Douala',
-        coordinates: {
-          lat: 4.0489,
-          lng: 9.6967
-        },
-        onDuty: true,
-        phone: '+237691234567',
-        lastUpdate: new Date(Date.now() - 5 * 60 * 1000).toISOString() // 5 minutes ago
-      },
-      {
-        id: '3',
-        name: 'Paul Mbarga',
-        vehicleType: 'Moto de collecte',
-        currentLocation: 'Bonapriso, Douala',
-        coordinates: {
-          lat: 4.0456,
-          lng: 9.6889
-        },
-        onDuty: false,
-        phone: '+237692345678',
-        lastUpdate: new Date(Date.now() - 15 * 60 * 1000).toISOString() // 15 minutes ago
+      onDuty: collector.onDuty,
+      lastUpdate: collector.updatedAt.toISOString()
+    }));
+
+    // Si aucun collecteur actif, créer un collecteur de test automatiquement
+    if (formattedCollectors.length === 0) {
+      console.log('⚠️ Aucun collecteur actif, création d\'un collecteur de test...');
+      
+      // Créer un collecteur de test dans la base
+      try {
+        const testCollector = new User({
+          firstName: 'Jean',
+          lastName: 'Dupont (Test)',
+          email: 'test.collecteur@collectam.com',
+          phone: '+237690123456',
+          userType: 'collecteur',
+          onDuty: true,
+          lastLocation: {
+            type: 'Point',
+            coordinates: [9.7043, 4.0511]
+          },
+          password: 'test123' // Mot de passe temporaire
+        });
+        
+        await testCollector.save();
+        console.log('✅ Collecteur de test créé:', testCollector._id);
+        
+        // Retourner le collecteur créé
+        formattedCollectors = [{
+          collectorId: testCollector._id.toString(),
+          name: `${testCollector.firstName} ${testCollector.lastName}`,
+          location: testCollector.lastLocation,
+          onDuty: testCollector.onDuty,
+          lastUpdate: testCollector.updatedAt.toISOString()
+        }];
+      } catch (error) {
+        console.error('❌ Erreur création collecteur de test:', error);
+        
+        // Fallback vers données mockées
+        const mockCollectors = [
+          {
+            collectorId: 'mock-1',
+            name: 'Jean Dupont (Mock)',
+            location: {
+              type: 'Point',
+              coordinates: [9.7043, 4.0511]
+            },
+            onDuty: true,
+            lastUpdate: new Date().toISOString()
+          }
+        ];
+        
+        return res.json({
+          success: true,
+          data: mockCollectors,
+          count: mockCollectors.length,
+          message: 'Données mockées - erreur création collecteur test'
+        });
       }
-    ];
+    }
 
     res.json({
       success: true,
-      data: mockCollectors
+      data: formattedCollectors,
+      count: formattedCollectors.length
     });
   } catch (error) {
-    console.error('Get active collectors error:', error);
+    console.error('❌ Erreur récupération collecteurs actifs:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des collecteurs'
