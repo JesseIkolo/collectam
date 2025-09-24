@@ -7,6 +7,7 @@ export interface BusinessCollector {
   employeeId?: string;
   position: string;
   businessOwnerId: string;
+  linkedUserId?: string;
   status: 'actif' | 'inactif' | 'suspendu';
   hireDate: string;
   assignedVehicleId?: string;
@@ -17,10 +18,8 @@ export interface BusinessCollector {
     relationship: string;
   };
   address?: {
-    street?: string;
     city?: string;
     region?: string;
-    postalCode?: string;
     country: string;
   };
   workSchedule?: {

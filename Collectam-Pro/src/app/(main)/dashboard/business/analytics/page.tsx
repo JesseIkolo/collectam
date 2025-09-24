@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -14,87 +14,111 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 
-interface AnalyticsData {
-  overview: {
-    totalCollections: number;
-    totalWeight: number;
-    averageResponseTime: number;
-    customerSatisfaction: number;
-  };
-  trends: {
-    collectionsThisMonth: number;
-    collectionsLastMonth: number;
-    weightThisMonth: number;
-    weightLastMonth: number;
-  };
-  topPerformers: {
-    collectors: Array<{
-      id: string;
-      name: string;
-      collections: number;
-      weight: number;
-    }>;
-    vehicles: Array<{
-      id: string;
-      licensePlate: string;
-      collections: number;
-      efficiency: number;
-    }>;
-  };
-}
+type OverviewStats = {
+  totalCollections: number;
+  totalWeight: number;
+  averageResponseTime: number;
+  customerSatisfaction: number;
+};
+
+type TopCollector = { id: string; name: string; collections: number; weight: number };
 
 export default function AnalyticsPage() {
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('30d');
+  const [overview, setOverview] = useState<OverviewStats>({
+    totalCollections: 0,
+    totalWeight: 0,
+    averageResponseTime: 0,
+    customerSatisfaction: 0
+  });
+  const [prevOverview, setPrevOverview] = useState<OverviewStats | null>(null);
+  const [topCollectors, setTopCollectors] = useState<TopCollector[]>([]);
+  const [timeRange, setTimeRange] = useState<'7d'|'30d'|'90d'|'1y'>('30d');
+  const [customFrom, setCustomFrom] = useState<string>('');
+  const [customTo, setCustomTo] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('scheduled,in_progress,completed');
+
+  const { from, to } = useMemo(() => {
+    if (customFrom && customTo) return { from: new Date(customFrom), to: new Date(customTo) };
+    const now = new Date();
+    const end = now;
+    const start = new Date(now);
+    if (timeRange === '7d') start.setDate(start.getDate() - 7);
+    else if (timeRange === '30d') start.setDate(start.getDate() - 30);
+    else if (timeRange === '90d') start.setDate(start.getDate() - 90);
+    else start.setFullYear(start.getFullYear() - 1);
+    return { from: start, to: end };
+  }, [timeRange, customFrom, customTo]);
+
+  const prevPeriod = useMemo(() => {
+    const duration = to.getTime() - from.getTime();
+    const prevTo = new Date(from.getTime());
+    const prevFrom = new Date(from.getTime() - duration);
+    return { prevFrom, prevTo };
+  }, [from, to]);
 
   useEffect(() => {
-    fetchAnalyticsData();
-  }, [timeRange]);
+    const run = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('accessToken');
+        const headers = { 'Authorization': `Bearer ${token}` } as any;
+        const qs = (d: Date) => encodeURIComponent(d.toISOString());
 
-  const fetchAnalyticsData = async () => {
-    try {
-      // Simuler des données pour l'instant
-      setTimeout(() => {
-        setAnalyticsData({
-          overview: {
-            totalCollections: 1247,
-            totalWeight: 8945,
-            averageResponseTime: 24,
-            customerSatisfaction: 4.7
-          },
-          trends: {
-            collectionsThisMonth: 387,
-            collectionsLastMonth: 342,
-            weightThisMonth: 2890,
-            weightLastMonth: 2654
-          },
-          topPerformers: {
-            collectors: [
-              { id: '1', name: 'Jean Dupont', collections: 89, weight: 645 },
-              { id: '2', name: 'Marie Martin', collections: 76, weight: 589 },
-              { id: '3', name: 'Pierre Durand', collections: 68, weight: 512 }
-            ],
-            vehicles: [
-              { id: '1', licensePlate: 'AB-123-CD', collections: 156, efficiency: 94 },
-              { id: '2', licensePlate: 'EF-456-GH', collections: 142, efficiency: 91 },
-              { id: '3', licensePlate: 'IJ-789-KL', collections: 134, efficiency: 88 }
-            ]
-          }
-        });
+        // Overview for current period
+        const statsRes = await fetch(`/api/business-subscription/stats?from=${qs(from)}&to=${qs(to)}`, { headers });
+        if (statsRes.ok) {
+          const data = await statsRes.json();
+          setOverview({
+            totalCollections: data.data?.totalCollections || 0,
+            totalWeight: data.data?.totalWeight || 0,
+            averageResponseTime: data.data?.averageResponseTime || 0,
+            customerSatisfaction: data.data?.customerSatisfaction || 0,
+          });
+        }
+
+        // Overview for previous period (for trends)
+        const prevRes = await fetch(`/api/business-subscription/stats?from=${qs(prevPeriod.prevFrom)}&to=${qs(prevPeriod.prevTo)}`, { headers });
+        if (prevRes.ok) {
+          const pdata = await prevRes.json();
+          setPrevOverview({
+            totalCollections: pdata.data?.totalCollections || 0,
+            totalWeight: pdata.data?.totalWeight || 0,
+            averageResponseTime: pdata.data?.averageResponseTime || 0,
+            customerSatisfaction: pdata.data?.customerSatisfaction || 0,
+          });
+        }
+
+        // Assigned collections (for top collectors)
+        const collRes = await fetch(`/api/business-collectors/assigned-collections?status=${encodeURIComponent(statusFilter)}&from=${qs(from)}&to=${qs(to)}`, { headers });
+        if (collRes.ok) {
+          const list = (await collRes.json()).data || [];
+          // Group by assignedCollector
+          const map = new Map<string, TopCollector>();
+          list.forEach((r: any) => {
+            const id = r.assignedCollector?._id || r.assignedCollector;
+            const key = id ? String(id) : 'unknown';
+            const name = r.assignedCollector ? `${r.assignedCollector.firstName || ''} ${r.assignedCollector.lastName || ''}`.trim() : 'Inconnu';
+            const weight = Number(r.estimatedWeight || 0);
+            const curr = map.get(key) || { id: key, name, collections: 0, weight: 0 };
+            curr.collections += 1;
+            curr.weight += weight;
+            map.set(key, curr);
+          });
+          const arr = Array.from(map.values()).filter(c => c.id !== 'unknown').sort((a, b) => b.collections - a.collections).slice(0, 5);
+          setTopCollectors(arr);
+        }
+      } finally {
         setLoading(false);
-      }, 1000);
-    } catch (error) {
-      setLoading(false);
-    }
-  };
+      }
+    };
+    run();
+  }, [from, to, prevPeriod.prevFrom, prevPeriod.prevTo, statusFilter]);
 
   const calculateTrend = (current: number, previous: number) => {
-    const change = ((current - previous) / previous) * 100;
-    return {
-      value: Math.abs(change).toFixed(1),
-      isPositive: change > 0
-    };
+    const base = previous === 0 ? 1 : previous;
+    const change = ((current - previous) / base) * 100;
+    return { value: Math.abs(change).toFixed(1), isPositive: change >= 0 };
   };
 
   if (loading) {
@@ -112,15 +136,8 @@ export default function AnalyticsPage() {
     );
   }
 
-  const collectionsTrend = calculateTrend(
-    analyticsData?.trends.collectionsThisMonth || 0,
-    analyticsData?.trends.collectionsLastMonth || 1
-  );
-
-  const weightTrend = calculateTrend(
-    analyticsData?.trends.weightThisMonth || 0,
-    analyticsData?.trends.weightLastMonth || 1
-  );
+  const collectionsTrend = calculateTrend(overview.totalCollections, prevOverview?.totalCollections || 0);
+  const weightTrend = calculateTrend(overview.totalWeight, prevOverview?.totalWeight || 0);
 
   return (
     <div className="space-y-6">
@@ -129,17 +146,35 @@ export default function AnalyticsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">Analytics & Rapports</h1>
           <p className="text-muted-foreground text-sm sm:text-base">Suivez les performances de votre flotte</p>
         </div>
-        <div className="flex gap-2">
-          <select 
-            value={timeRange} 
-            onChange={(e) => setTimeRange(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
-          >
-            <option value="7d">7 derniers jours</option>
-            <option value="30d">30 derniers jours</option>
-            <option value="90d">3 derniers mois</option>
-            <option value="1y">Dernière année</option>
-          </select>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex gap-2">
+            <select 
+              value={timeRange} 
+              onChange={(e) => { setTimeRange(e.target.value as any); setCustomFrom(''); setCustomTo(''); }}
+              className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
+            >
+              <option value="7d">7 derniers jours</option>
+              <option value="30d">30 derniers jours</option>
+              <option value="90d">3 derniers mois</option>
+              <option value="1y">Dernière année</option>
+            </select>
+            <select 
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
+              title="Filtrer par statut"
+            >
+              <option value="scheduled,in_progress,completed">Programmées / En cours / Terminées</option>
+              <option value="scheduled">Programmées</option>
+              <option value="in_progress">En cours</option>
+              <option value="completed">Terminées</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="date" className="px-3 py-2 border rounded-md text-sm" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+            <span className="text-muted-foreground text-sm">au</span>
+            <input type="date" className="px-3 py-2 border rounded-md text-sm" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+          </div>
         </div>
       </div>
 
@@ -151,7 +186,7 @@ export default function AnalyticsPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData?.overview.totalCollections}</div>
+            <div className="text-2xl font-bold">{overview.totalCollections}</div>
             <div className="flex items-center text-xs text-muted-foreground">
               {collectionsTrend.isPositive ? (
                 <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
@@ -159,7 +194,7 @@ export default function AnalyticsPage() {
                 <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
               )}
               <span className={collectionsTrend.isPositive ? 'text-green-500' : 'text-red-500'}>
-                +{collectionsTrend.value}%
+                {collectionsTrend.isPositive ? '+' : '-'}{collectionsTrend.value}%
               </span>
               <span className="ml-1">vs mois dernier</span>
             </div>
@@ -172,7 +207,7 @@ export default function AnalyticsPage() {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData?.overview.totalWeight} kg</div>
+            <div className="text-2xl font-bold">{overview.totalWeight} kg</div>
             <div className="flex items-center text-xs text-muted-foreground">
               {weightTrend.isPositive ? (
                 <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
@@ -180,7 +215,7 @@ export default function AnalyticsPage() {
                 <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
               )}
               <span className={weightTrend.isPositive ? 'text-green-500' : 'text-red-500'}>
-                +{weightTrend.value}%
+                {weightTrend.isPositive ? '+' : '-'}{weightTrend.value}%
               </span>
               <span className="ml-1">vs mois dernier</span>
             </div>
@@ -193,7 +228,7 @@ export default function AnalyticsPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData?.overview.averageResponseTime}h</div>
+            <div className="text-2xl font-bold">{overview.averageResponseTime}h</div>
             <p className="text-xs text-muted-foreground">Temps moyen de réponse</p>
           </CardContent>
         </Card>
@@ -204,7 +239,7 @@ export default function AnalyticsPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData?.overview.customerSatisfaction}/5</div>
+            <div className="text-2xl font-bold">{overview.customerSatisfaction}/5</div>
             <p className="text-xs text-muted-foreground">Note moyenne</p>
           </CardContent>
         </Card>
@@ -226,76 +261,51 @@ export default function AnalyticsPage() {
                 <CardDescription>Meilleurs performeurs ce mois</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {analyticsData?.topPerformers.collectors.map((collector, index) => (
+                {topCollectors.map((collector, index) => (
                   <div key={collector.id} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
                       <Badge variant="outline" className="w-8 h-8 rounded-full p-0 flex items-center justify-center flex-shrink-0">
                         {index + 1}
                       </Badge>
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{collector.name}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {collector.collections} collectes • {collector.weight} kg
-                        </p>
+                        <p className="font-medium truncate">{collector.name || 'Collecteur'}</p>
+                        <p className="text-sm text-muted-foreground truncate">{collector.collections} collectes • {collector.weight} kg</p>
                       </div>
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Véhicules</CardTitle>
-                <CardDescription>Véhicules les plus efficaces</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {analyticsData?.topPerformers.vehicles.map((vehicle, index) => (
-                  <div key={vehicle.id} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      <Badge variant="outline" className="w-8 h-8 rounded-full p-0 flex items-center justify-center flex-shrink-0">
-                        {index + 1}
-                      </Badge>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{vehicle.licensePlate}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {vehicle.collections} collectes • {vehicle.efficiency}% efficacité
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            {/* Top véhicules: à venir quand on consolidera les données véhiculeUsed */}
           </div>
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Évolution Mensuelle</CardTitle>
-              <CardDescription>Comparaison avec le mois précédent</CardDescription>
+              <CardTitle>Évolution de la période</CardTitle>
+              <CardDescription>Comparaison avec la période précédente de même durée</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium">Collectes ce mois</span>
-                    <span className="text-sm">{analyticsData?.trends.collectionsThisMonth}</span>
+                    <span className="text-sm font-medium">Collectes (période)</span>
+                    <span className="text-sm">{overview.totalCollections}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
-                    <span className="text-sm">Mois précédent</span>
-                    <span className="text-sm">{analyticsData?.trends.collectionsLastMonth}</span>
+                    <span className="text-sm">Période précédente</span>
+                    <span className="text-sm">{prevOverview?.totalCollections ?? 0}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium">Poids ce mois</span>
-                    <span className="text-sm">{analyticsData?.trends.weightThisMonth} kg</span>
+                    <span className="text-sm font-medium">Poids (période)</span>
+                    <span className="text-sm">{overview.totalWeight} kg</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
-                    <span className="text-sm">Mois précédent</span>
-                    <span className="text-sm">{analyticsData?.trends.weightLastMonth} kg</span>
+                    <span className="text-sm">Période précédente</span>
+                    <span className="text-sm">{prevOverview?.totalWeight ?? 0} kg</span>
                   </div>
                 </div>
               </div>

@@ -107,6 +107,8 @@ const HouseholdTrackingMap: React.FC<HouseholdTrackingMapProps> = ({
   useEffect(() => {
     const markers: MapMarker[] = [];
     const routes: any[] = [];
+    const addedRequestIds = new Set<string>();
+    const addedCollectorIds = new Set<string>();
 
     wasteRequests.forEach(request => {
       // Marqueur pour la demande de collecte (avec validation des coordonnées)
@@ -122,42 +124,46 @@ const HouseholdTrackingMap: React.FC<HouseholdTrackingMapProps> = ({
             !isNaN(lng) && !isNaN(lat) && 
             lng >= -180 && lng <= 180 && 
             lat >= -90 && lat <= 90) {
-          
-          markers.push({
-          id: `request-${request._id}`,
-          coordinates: request.coordinates.coordinates,
-          type: 'waste-request',
-          status: request.status,
-          data: request,
-          popup: {
-            title: `Collecte ${getWasteTypeLabel(request.wasteType)}`,
-            content: `
-              <div class="space-y-2">
-                <p><strong>Status:</strong> ${getStatusLabel(request.status)}</p>
-                <p><strong>Adresse:</strong> ${request.address}</p>
-                <p><strong>Poids:</strong> ${request.estimatedWeight}kg</p>
-                <p><strong>Date prévue:</strong> ${new Date(request.preferredDate).toLocaleDateString('fr-FR')} à ${request.preferredTime}</p>
-                ${request.assignedCollector ? `
-                  <p><strong>Collecteur:</strong> ${request.assignedCollector.firstName} ${request.assignedCollector.lastName}</p>
-                  ${collectorETAs[request._id] ? `
-                    <p><strong>Distance:</strong> ${collectorETAs[request._id].distance} km</p>
-                    <p><strong>ETA:</strong> ${collectorETAs[request._id].etaText}</p>
-                  ` : ''}
-                ` : ''}
-              </div>
-            `,
-            actions: [
-              {
-                label: 'Voir détails',
-                onClick: () => {
-                  setSelectedRequest(request);
-                  onRequestSelect?.(request);
-                },
-                variant: 'primary'
+          // Éviter les doublons de marqueurs demande
+          if (!addedRequestIds.has(request._id)) {
+            addedRequestIds.add(request._id);
+            
+            markers.push({
+              id: `request-${request._id}`,
+              coordinates: request.coordinates.coordinates,
+              type: 'waste-request',
+              status: request.status,
+              data: request,
+              popup: {
+                title: `Collecte ${getWasteTypeLabel(request.wasteType)}`,
+                content: `
+                  <div class="space-y-2">
+                    <p><strong>Status:</strong> ${getStatusLabel(request.status)}</p>
+                    <p><strong>Adresse:</strong> ${request.address}</p>
+                    <p><strong>Poids:</strong> ${request.estimatedWeight}kg</p>
+                    <p><strong>Date prévue:</strong> ${new Date(request.preferredDate).toLocaleDateString('fr-FR')} à ${request.preferredTime}</p>
+                    ${request.assignedCollector ? `
+                      <p><strong>Collecteur:</strong> ${request.assignedCollector.firstName} ${request.assignedCollector.lastName}</p>
+                      ${collectorETAs[request._id] ? `
+                        <p><strong>Distance:</strong> ${collectorETAs[request._id].distance} km</p>
+                        <p><strong>ETA:</strong> ${collectorETAs[request._id].etaText}</p>
+                      ` : ''}
+                    ` : ''}
+                  </div>
+                `,
+                actions: [
+                  {
+                    label: 'Voir détails',
+                    onClick: () => {
+                      setSelectedRequest(request);
+                      onRequestSelect?.(request);
+                    },
+                    variant: 'primary'
+                  }
+                ]
               }
-            ]
+            });
           }
-        });
         } else {
           console.warn(`⚠️ Coordonnées invalides pour la demande ${request._id}:`, request.coordinates.coordinates);
         }
@@ -178,35 +184,39 @@ const HouseholdTrackingMap: React.FC<HouseholdTrackingMapProps> = ({
             !isNaN(collectorLng) && !isNaN(collectorLat) && 
             collectorLng >= -180 && collectorLng <= 180 && 
             collectorLat >= -90 && collectorLat <= 90) {
-          
-          markers.push({
-            id: `collector-${request.assignedCollector._id}`,
-            coordinates: request.assignedCollector.lastLocation.coordinates,
-          type: 'collector',
-          data: request.assignedCollector,
-          popup: {
-            title: `Collecteur ${request.assignedCollector.firstName} ${request.assignedCollector.lastName}`,
-            content: `
-              <div class="space-y-2">
-                <p><strong>Status:</strong> ${request.status === 'in_progress' ? 'En route vers vous' : 'Assigné à votre collecte'}</p>
-                <p><strong>Téléphone:</strong> ${request.assignedCollector.phone}</p>
-                <p><strong>Collecte:</strong> ${getWasteTypeLabel(request.wasteType)}</p>
-              </div>
-            `,
-            actions: [
-              {
-                label: 'Appeler',
-                onClick: () => window.open(`tel:${request.assignedCollector?.phone}`),
-                variant: 'primary'
-              },
-              {
-                label: 'Message',
-                onClick: () => window.open(`sms:${request.assignedCollector?.phone}`),
-                variant: 'secondary'
+          // Éviter les doublons: un seul marqueur par collecteur
+          if (!addedCollectorIds.has(request.assignedCollector._id)) {
+            addedCollectorIds.add(request.assignedCollector._id);
+            
+            markers.push({
+              id: `collector-${request.assignedCollector._id}`,
+              coordinates: request.assignedCollector.lastLocation.coordinates,
+              type: 'collector',
+              data: request.assignedCollector,
+              popup: {
+                title: `Collecteur ${request.assignedCollector.firstName} ${request.assignedCollector.lastName}`,
+                content: `
+                  <div class="space-y-2">
+                    <p><strong>Status:</strong> ${request.status === 'in_progress' ? 'En route vers vous' : 'Assigné à votre collecte'}</p>
+                    <p><strong>Téléphone:</strong> ${request.assignedCollector.phone}</p>
+                    <p><strong>Collecte:</strong> ${getWasteTypeLabel(request.wasteType)}</p>
+                  </div>
+                `,
+                actions: [
+                  {
+                    label: 'Appeler',
+                    onClick: () => window.open(`tel:${request.assignedCollector?.phone}`),
+                    variant: 'primary'
+                  },
+                  {
+                    label: 'Message',
+                    onClick: () => window.open(`sms:${request.assignedCollector?.phone}`),
+                    variant: 'secondary'
+                  }
+                ]
               }
-            ]
+            });
           }
-        });
         } else {
           console.warn(`⚠️ Coordonnées collecteur invalides pour ${request.assignedCollector._id}`);
         }

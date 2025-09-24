@@ -6,7 +6,8 @@ const {
   getBusinessCollectorById,
   updateBusinessCollector,
   deleteBusinessCollector,
-  assignVehicleToCollector
+  assignVehicleToCollector,
+  getAssignedCollections
 } = require('../controllers/businessCollectorController');
 const { authenticateToken } = require('../middlewares/auth');
 const { validateBusinessUser } = require('../middlewares/businessValidation');
@@ -24,5 +25,8 @@ router.delete('/:id', deleteBusinessCollector);
 
 // Route pour assigner un véhicule à un collecteur
 router.post('/assign-vehicle', assignVehicleToCollector);
+
+// Route pour lister les collectes assignées aux collecteurs Business
+router.get('/assigned-collections', getAssignedCollections);
 
 module.exports = router;

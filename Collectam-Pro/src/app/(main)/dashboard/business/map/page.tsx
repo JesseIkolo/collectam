@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import HouseholdTrackingMap from '@/components/maps/HouseholdTrackingMap';
-import { wasteRequestService, WasteRequest as ServiceWasteRequest } from '@/services/WasteRequestService';
+import { webSocketService } from '@/services/WebSocketService';
 
 // Interface that matches what HouseholdTrackingMap expects
 interface WasteRequest {
@@ -96,7 +96,23 @@ export default function BusinessMapPage() {
     loadBusinessMapData();
     // Refresh every 30 seconds
     const interval = setInterval(loadBusinessMapData, 30000);
-    return () => clearInterval(interval);
+    
+    // Écoute des événements temps réel pour rafraîchir automatiquement
+    const refreshOnEvent = () => {
+      // Rafraîchir rapidement sans attendre l'intervalle
+      loadBusinessMapData();
+    };
+
+    webSocketService.on('collection_started', refreshOnEvent);
+    webSocketService.on('collection_completed', refreshOnEvent);
+    webSocketService.on('collector_location_update', refreshOnEvent);
+
+    return () => {
+      clearInterval(interval);
+      webSocketService.off('collection_started', refreshOnEvent);
+      webSocketService.off('collection_completed', refreshOnEvent);
+      webSocketService.off('collector_location_update', refreshOnEvent);
+    };
   }, []);
 
   const loadBusinessMapData = async () => {
@@ -110,12 +126,11 @@ export default function BusinessMapPage() {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
       });
+      const collectorsJson = collectorsResponse.ok ? await collectorsResponse.json() : null;
+      const collectorsData = collectorsJson?.data?.collectors || [];
       
-      const collectorsData = collectorsResponse.ok ? 
-        (await collectorsResponse.json()).data || [] : [];
-      
-      // Charger les demandes assignées aux collecteurs business
-      const requestsData = await loadBusinessWasteRequests(collectorsData);
+      // Charger les demandes assignées aux collecteurs business via l'endpoint dédié
+      const requestsData = await loadBusinessWasteRequests();
       
       // Calculer les statistiques
       const activeCollectors = collectorsData.filter((c: BusinessCollector) => c.status === 'actif').length;
@@ -147,47 +162,36 @@ export default function BusinessMapPage() {
     }
   };
 
-  // Transform service data to map component format
-  const transformWasteRequest = (serviceRequest: ServiceWasteRequest, collectors: BusinessCollector[]): WasteRequest => {
-    // Find the assigned collector details
-    let assignedCollectorDetails = undefined;
-    if (serviceRequest.assignedCollector) {
-      const collector = collectors.find(c => c._id === serviceRequest.assignedCollector);
-      if (collector) {
-        assignedCollectorDetails = {
-          _id: collector._id,
-          firstName: collector.firstName,
-          lastName: collector.lastName,
-          phone: collector.phone,
-          lastLocation: collector.lastLocation ? {
-            coordinates: collector.lastLocation.coordinates
-          } : undefined
-        };
-      }
-    }
+  // Transformer la réponse unifiée du backend en format accepté par la carte
+  const transformWasteRequest = (r: any): WasteRequest => {
+    const assigned = r.assignedCollector ? {
+      _id: r.assignedCollector._id || r.assignedCollector,
+      firstName: r.assignedCollector.firstName,
+      lastName: r.assignedCollector.lastName,
+      phone: r.assignedCollector.phone,
+      lastLocation: r.assignedCollector.lastLocation ? {
+        coordinates: r.assignedCollector.lastLocation.coordinates
+      } : undefined
+    } : undefined;
 
     return {
-      _id: serviceRequest._id,
-      wasteType: serviceRequest.wasteType,
-      status: serviceRequest.status,
-      address: serviceRequest.address,
-      coordinates: serviceRequest.coordinates,
-      assignedCollector: assignedCollectorDetails,
-      preferredDate: serviceRequest.preferredDate,
-      preferredTime: serviceRequest.preferredTime,
-      estimatedWeight: serviceRequest.estimatedWeight,
-      description: serviceRequest.description
+      _id: r._id,
+      wasteType: r.wasteType,
+      status: r.status,
+      address: r.address,
+      coordinates: r.coordinates, // { coordinates: [lng, lat] }
+      assignedCollector: assigned,
+      preferredDate: r.preferredDate,
+      preferredTime: r.preferredTime,
+      estimatedWeight: r.estimatedWeight,
+      description: r.description
     };
   };
 
-  const loadBusinessWasteRequests = async (collectors: BusinessCollector[]): Promise<WasteRequest[]> => {
+  const loadBusinessWasteRequests = async (): Promise<WasteRequest[]> => {
     try {
-      // Récupérer toutes les demandes assignées aux collecteurs business
-      const collectorIds = collectors.map(c => c._id);
-      
-      if (collectorIds.length === 0) return [];
-      
-      const response = await fetch('/api/waste-collection-requests', {
+      // Récupérer toutes les demandes assignées aux collecteurs business (new + legacy)
+      const response = await fetch('/api/business-collectors/assigned-collections?status=scheduled,in_progress,assigned,confirmed', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
@@ -196,17 +200,8 @@ export default function BusinessMapPage() {
       if (!response.ok) return [];
       
       const allRequests = (await response.json()).data || [];
-      
-      // Filtrer les demandes assignées aux collecteurs business
-      const businessRequests = allRequests.filter((request: any) => 
-        request.assignedCollector && 
-        collectorIds.includes(request.assignedCollector._id || request.assignedCollector)
-      );
-      
-      // Transform to map component format
-      return businessRequests.map((request: ServiceWasteRequest) => 
-        transformWasteRequest(request, collectors)
-      );
+      // Transformer en format attendu par HouseholdTrackingMap
+      return allRequests.map((r: any) => transformWasteRequest(r));
     } catch (error) {
       console.error('❌ Erreur chargement demandes business:', error);
       return [];

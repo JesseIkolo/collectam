@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Crown, Users, Truck, BarChart3, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,13 +19,14 @@ interface Plan {
 const BusinessPricing: React.FC = () => {
   const [subscribing, setSubscribing] = useState<string | null>(null);
 
-  // Prix fixes comme demandé
-  const plans: Plan[] = [
+  // Prix fixes par défaut (fallback), seront remplacés par l'API si dispo
+  const defaultPlans: Plan[] = [
     {
       id: 'business-monthly',
       name: 'Mensuel',
       price: 10000,
       period: 'mois',
+      popular: true,
       features: [
         'Véhicules illimités',
         'Collecteurs illimités', 
@@ -38,7 +39,6 @@ const BusinessPricing: React.FC = () => {
       name: 'Trimestriel',
       price: 25000,
       period: '3 mois',
-      popular: true,
       features: [
         'Véhicules illimités',
         'Collecteurs illimités',
@@ -61,6 +61,47 @@ const BusinessPricing: React.FC = () => {
       ]
     }
   ];
+
+  const [plans, setPlans] = useState<Plan[]>(defaultPlans);
+
+  useEffect(() => {
+    // Charger les plans depuis l'API pour garantir la cohérence
+    const loadPlans = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const res = await fetch('/api/business-subscription/plans', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const apiPlans = (data?.data?.plans || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            period: p.durationType === 'month' ? (p.duration === 1 ? 'mois' : `${p.duration} mois`) : 'an',
+            popular: !!p.popular,
+            features: p.features || []
+          })) as Plan[];
+          if (apiPlans.length) setPlans(apiPlans);
+        }
+      } catch (e) {
+        console.warn('Unable to load plans from API, using defaults.', e);
+      }
+    };
+    loadPlans();
+  }, []);
+
+  // Détecter le plan actuel depuis le localStorage (mis à jour lors de l'abonnement)
+  const currentPlanId = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('user');
+      if (!raw) return null;
+      const user = JSON.parse(raw);
+      return user?.subscription?.plan || user?.subscription?.planId || null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const handleSubscribe = async (planId: string) => {
     setSubscribing(planId);
@@ -97,9 +138,8 @@ const BusinessPricing: React.FC = () => {
         console.warn('Could not decode token:', decodeError);
       }
 
-      // Use environment variable for API URL or fallback to localhost:5000
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiUrl}/api/business-subscription/subscribe`, {
+      // Utiliser le proxy Next pour rester cohérent
+      const response = await fetch(`/api/business-subscription/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -114,13 +154,17 @@ const BusinessPricing: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         
-        // Update user data in localStorage
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        userData.userType = 'collectam-business';
-        userData.subscription = data.data.subscription;
-        console.log('💾 Saving subscription data:', data.data.subscription);
-        console.log('💾 Updated user data:', userData);
-        localStorage.setItem('user', JSON.stringify(userData));
+        // Sauvegarder l'utilisateur complet renvoyé par le backend pour éviter toute divergence
+        const updatedUser = data?.data?.user;
+        if (updatedUser) {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        } else {
+          // Fallback: au moins, mettre à jour la subscription si l'objet user n'est pas renvoyé
+          const userData = JSON.parse(localStorage.getItem('user') || '{}');
+          userData.userType = 'collectam-business';
+          userData.subscription = data.data.subscription;
+          localStorage.setItem('user', JSON.stringify(userData));
+        }
 
         toast.success("Votre abonnement Business a été activé avec succès");
 
@@ -188,12 +232,21 @@ const BusinessPricing: React.FC = () => {
 
         {/* Plans */}
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {plans.map((plan) => (
+          {plans.map((plan) => {
+            const isCurrentPlan = !!currentPlanId && currentPlanId === plan.id;
+            return (
             <Card 
               key={plan.id} 
-              className={`relative ${plan.popular ? 'border-primary border-2' : ''} hover:shadow-lg transition-shadow`}
+              className={`relative border rounded-lg hover:shadow-lg transition-shadow ${
+                isCurrentPlan ? 'border-2 border-blue-500 bg-blue-50 ring-2 ring-blue-500' : ''
+              } ${plan.popular && !isCurrentPlan ? 'ring-1 ring-gray-300' : ''}`}
             >
-              {plan.popular && (
+              {isCurrentPlan && (
+                <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2" variant="secondary">
+                  Plan Actuel
+                </Badge>
+              )}
+              {!isCurrentPlan && plan.popular && (
                 <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                   <Crown className="w-3 h-3 mr-1" />
                   Populaire
@@ -226,11 +279,13 @@ const BusinessPricing: React.FC = () => {
               <CardFooter>
                 <Button
                   onClick={() => handleSubscribe(plan.id)}
-                  disabled={subscribing === plan.id}
+                  disabled={subscribing === plan.id || isCurrentPlan}
                   className="w-full"
-                  variant={plan.popular ? "default" : "outline"}
+                  variant={isCurrentPlan ? "outline" : plan.popular ? "default" : "outline"}
                 >
-                  {subscribing === plan.id ? (
+                  {isCurrentPlan ? (
+                    'Plan Actuel'
+                  ) : subscribing === plan.id ? (
                     <div className="flex items-center">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
                       Activation...
@@ -241,7 +296,7 @@ const BusinessPricing: React.FC = () => {
                 </Button>
               </CardFooter>
             </Card>
-          ))}
+          );})}
         </div>
 
         {/* Features Section */}

@@ -12,10 +12,21 @@ import {
   Activity, 
   Clock, 
   BarChart3, 
-  CreditCard
+  CreditCard,
+  MapPin,
+  Settings
 } from "lucide-react";
 import Link from "next/link";
 import { AuthService } from '@/lib/auth';
+import { webSocketService } from '@/services/WebSocketService';
+
+// Types
+type BusinessStats = {
+  totalCollections?: number;
+  totalWeight?: number;
+  averageResponseTime?: number;
+  customerSatisfaction?: number;
+};
 
 // Import des pages
 import FleetPage from "./fleet/page";
@@ -40,6 +51,17 @@ export default function BusinessDashboardPage() {
 
   useEffect(() => {
     loadDashboardData();
+    // Rafraîchir automatiquement lors des événements temps réel
+    const refresh = () => loadDashboardData();
+    webSocketService.on('collection_started', refresh);
+    webSocketService.on('collection_completed', refresh);
+    webSocketService.on('collector_location_update', refresh);
+
+    return () => {
+      webSocketService.off('collection_started', refresh);
+      webSocketService.off('collection_completed', refresh);
+      webSocketService.off('collector_location_update', refresh);
+    };
   }, []);
 
   const loadDashboardData = async () => {
@@ -87,7 +109,7 @@ export default function BusinessDashboardPage() {
       }
 
       // Traiter les statistiques
-      let statsData = {};
+      let statsData: BusinessStats = {};
       if (statsResponse.status === 'fulfilled' && statsResponse.value.ok) {
         const statsResult = await statsResponse.value.json();
         statsData = statsResult.data || {};
@@ -97,19 +119,24 @@ export default function BusinessDashboardPage() {
       const activeCollectors = collectorsData.filter((c: any) => c.status === 'actif').length;
       const activeVehicles = vehiclesData.filter((v: any) => v.status === 'actif').length;
 
-      // Calculer la date d'expiration de l'abonnement
-      const subscriptionDate = userSubscription?.createdAt ? new Date(userSubscription.createdAt) : new Date();
-      const planDuration = userSubscription?.planId === 'business-yearly' ? 365 : 
-                          userSubscription?.planId === 'business-quarterly' ? 90 : 30;
-      const expirationDate = new Date(subscriptionDate.getTime() + (planDuration * 24 * 60 * 60 * 1000));
+      // Déterminer le plan et la date d'expiration à partir de la subscription
+      const resolvedPlanId = (userSubscription?.planId || userSubscription?.plan) as keyof typeof planMapping | undefined;
+      let expirationDate: Date;
+      if (userSubscription?.expiry) {
+        expirationDate = new Date(userSubscription.expiry);
+      } else {
+        const subscriptionDate = (userSubscription?.startDate || userSubscription?.createdAt)
+          ? new Date(userSubscription.startDate || userSubscription.createdAt)
+          : new Date();
+        const planDurationDays = resolvedPlanId === 'business-yearly' ? 365 : resolvedPlanId === 'business-quarterly' ? 90 : 30;
+        expirationDate = new Date(subscriptionDate.getTime() + (planDurationDays * 24 * 60 * 60 * 1000));
+      }
       const daysLeft = Math.max(0, Math.ceil((expirationDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
 
       setDashboardData({
         subscription: {
-          plan: userSubscription?.planId ? 
-            planMapping[userSubscription.planId as keyof typeof planMapping] || 'Mensuel' :
-            'Mensuel',
-          status: userSubscription?.status || 'active',
+          plan: resolvedPlanId ? (planMapping[resolvedPlanId] || 'Mensuel') : 'Mensuel',
+          status: userSubscription?.status || (userSubscription?.isActive ? 'active' : 'expired'),
           daysLeft,
           expiresAt: expirationDate.toISOString()
         },

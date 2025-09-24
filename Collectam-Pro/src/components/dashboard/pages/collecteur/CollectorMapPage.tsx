@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +47,20 @@ export default function CollectorMapPage() {
   const searchParams = useSearchParams();
   const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined);
   const [recentlyCompleted, setRecentlyCompleted] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [banner, setBanner] = useState<{ type: 'started' | 'completed'; text: string } | null>(null);
+  const bannerTimer = useRef<any>(null);
+
+  // Combiner les demandes assignées et les terminées récemment, en supprimant les doublons par _id
+  const combinedRequests = useMemo(() => {
+    const map = new Map<string, any>();
+    [...(assignedRequests || []), ...(recentlyCompleted || [])].forEach((r: any) => {
+      if (r && r._id) {
+        map.set(r._id, r);
+      }
+    });
+    return Array.from(map.values());
+  }, [assignedRequests, recentlyCompleted]);
 
   // Charger les demandes assignées au collecteur
   const loadAssignedRequests = async () => {
@@ -89,19 +103,36 @@ export default function CollectorMapPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Rafraîchir manuellement les données et la position
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await loadAssignedRequests();
+      try {
+        const pos = await locationService.getCurrentPosition();
+        setCurrentLocation([pos.longitude, pos.latitude]);
+        await locationService.updateCollectorLocation(pos);
+      } catch (e) {
+        console.warn('⚠️ Impossible de mettre à jour la position lors du refresh');
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // Center on focused request if provided
   useEffect(() => {
     const focusId = searchParams ? searchParams.get('focus') : null;
     if (focusId && Array.isArray(assignedRequests) && assignedRequests.length > 0) {
-      const target = assignedRequests.find((r: any) => r._id === focusId && r.coordinates && Array.isArray(r.coordinates));
-      if (target && target.coordinates) {
-        setMapCenter(target.coordinates as [number, number]);
+      const target = assignedRequests.find((r: any) => r._id === focusId && r.coordinates && r.coordinates.coordinates && Array.isArray(r.coordinates.coordinates));
+      if (target && target.coordinates && target.coordinates.coordinates) {
+        setMapCenter(target.coordinates.coordinates as [number, number]);
       }
     }
   }, [searchParams, assignedRequests]);
 
   // Intégration WebSocket pour notifications temps réel
-  const { sendLocationUpdate, notifyCollectionStarted, notifyCollectionCompleted } = useWebSocket({
+  const { sendLocationUpdate } = useWebSocket({
     onNewWasteRequest: (data) => {
       console.log('🗑️ Nouvelle demande reçue:', data);
       toast.info(`Nouvelle collecte assignée: ${data.wasteType}`);
@@ -111,10 +142,22 @@ export default function CollectorMapPage() {
     onCollectionStarted: (data) => {
       console.log('▶️ Collecte démarrée:', data);
       toast.success('Collecte démarrée avec succès');
+      loadAssignedRequests();
+      try {
+        if (bannerTimer.current) clearTimeout(bannerTimer.current);
+        setBanner({ type: 'started', text: 'Collecte démarrée' });
+        bannerTimer.current = setTimeout(() => setBanner(null), 4000);
+      } catch {}
     },
     onCollectionCompleted: (data) => {
       console.log('✅ Collecte terminée:', data);
       toast.success('Collecte terminée avec succès');
+      loadAssignedRequests();
+      try {
+        if (bannerTimer.current) clearTimeout(bannerTimer.current);
+        setBanner({ type: 'completed', text: 'Collecte terminée' });
+        bannerTimer.current = setTimeout(() => setBanner(null), 4000);
+      } catch {}
     }
   });
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -139,9 +182,8 @@ export default function CollectorMapPage() {
 
   const startCollection = async (collectionId: string) => {
     try {
-      // Call backend to mark as in_progress
+      // Call backend to mark as in_progress (server will broadcast WS event)
       await wasteRequestService.startCollection(collectionId);
-      notifyCollectionStarted(collectionId);
       // Refresh assigned requests list
       await loadAssignedRequests();
       // Update local demo collections if any
@@ -157,7 +199,6 @@ export default function CollectorMapPage() {
     try {
       // In a real flow we'd pass actual weight, here we keep it optional
       await wasteRequestService.completeCollection(collectionId, {});
-      notifyCollectionCompleted(collectionId);
       // Keep a temporary green marker on map for a few seconds
       const justCompleted = assignedRequests.find((r: any) => r._id === collectionId);
       if (justCompleted && justCompleted.coordinates) {
@@ -245,32 +286,16 @@ export default function CollectorMapPage() {
     };
   }, []);
 
-  // Convertir les collections en format pour CollectorRouteMap
-  useEffect(() => {
-    const wasteRequestsForMap = collections.map((collection) => ({
-      _id: collection.id,
-      wasteType: collection.wasteType.toLowerCase(),
-      status: collection.status,
-      address: collection.address,
-      coordinates: {
-        coordinates: [collection.coordinates[0], collection.coordinates[1]]
-      },
-      userId: {
-        _id: `user-${collection.id}`,
-        firstName: 'Client',
-        lastName: `#${collection.id}`,
-        phone: '+237123456789'
-      },
-      preferredDate: new Date().toISOString(),
-      preferredTime: collection.timeSlot,
-      estimatedWeight: collection.estimatedWeight,
-      description: `Collecte de ${collection.wasteType}`
-    }));
-    setAssignedRequests(wasteRequestsForMap);
-  }, [collections]);
+  // NOTE: Suppression de l'override mock des collections pour éviter les doublons et conflits.
 
   return (
     <div className="space-y-6">
+      {/* Bannières de succès */}
+      {banner && (
+        <Alert className={`${banner.type === 'completed' ? 'border-green-500 bg-green-50' : 'border-blue-500 bg-blue-50'}`}>
+          <AlertDescription>{banner.text}</AlertDescription>
+        </Alert>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -280,8 +305,13 @@ export default function CollectorMapPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="flex items-center gap-2">
-            <RotateCcw className="h-4 w-4" />
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RotateCcw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Actualiser
           </Button>
           <Badge variant="default" className="flex items-center gap-1">
@@ -349,7 +379,7 @@ export default function CollectorMapPage() {
 
       {/* Carte de Route Interactive MapTiler */}
       <CollectorRouteMap 
-        assignedRequests={[...assignedRequests, ...recentlyCompleted]}
+        assignedRequests={combinedRequests}
         collectorLocation={currentLocation}
         center={mapCenter}
         highlightMarkerId={(searchParams && searchParams.get('focus')) ? `request-${searchParams.get('focus')}` : undefined}

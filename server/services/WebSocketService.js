@@ -28,7 +28,12 @@ class WebSocketService {
                 }
 
                 const decoded = jwt.verify(token, process.env.JWT_SECRET);
-                const user = await User.findById(decoded._id);
+                const userId = decoded?._id || decoded?.id; // Supporter payload {_id} ou {id}
+                if (!userId) {
+                    return next(new Error('Token invalide (payload sans id)'));
+                }
+
+                const user = await User.findById(userId);
                 
                 if (!user) {
                     return next(new Error('Utilisateur non trouvé'));

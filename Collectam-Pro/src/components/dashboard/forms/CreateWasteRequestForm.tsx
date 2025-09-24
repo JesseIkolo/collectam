@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, MapPin, Loader2, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { wasteRequestService } from "@/services/WasteRequestService";
+import { locationService } from "@/services/LocationService";
 
 interface WasteRequestFormData {
   wasteType: string;
@@ -58,63 +59,23 @@ export function CreateWasteRequestForm({ onSubmit, onCancel, onSuccess }: Create
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [assignedCollector, setAssignedCollector] = useState<AssignedCollector | null>(null);
 
-  // Get user's location with improved error handling
-  const getUserLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error("La géolocalisation n'est pas supportée par votre navigateur");
-      // Fallback vers Douala
+  // Get user's location using centralized LocationService with robust fallbacks
+  const getUserLocation = async () => {
+    try {
+      setLocationStatus('loading');
+      const pos = await locationService.getCurrentPosition();
+      const coords: [number, number] = [pos.longitude, pos.latitude];
+      setCoordinates(coords);
+      setLocationStatus('success');
+      console.log('📍 Position obtenue:', coords, `±${pos.accuracy ?? '?'}m`);
+      toast.success('Position obtenue avec succès');
+    } catch (err) {
+      console.warn('⚠️ Géolocalisation indisponible, utilisation de la position par défaut (Douala)');
       const defaultCoords: [number, number] = [9.7679, 4.0511];
       setCoordinates(defaultCoords);
       setLocationStatus('success');
-      return;
+      toast.info('Position par défaut utilisée');
     }
-
-    setLocationStatus('loading');
-    
-    // Première tentative avec haute précision
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
-        setCoordinates(coords);
-        setLocationStatus('success');
-        console.log('📍 Position obtenue avec haute précision:', coords);
-        toast.success('Position obtenue avec succès');
-      },
-      (error) => {
-        console.warn('⚠️ Erreur haute précision, tentative avec précision normale...', error.message);
-        
-        // Deuxième tentative avec précision normale
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const coords: [number, number] = [position.coords.longitude, position.coords.latitude];
-            setCoordinates(coords);
-            setLocationStatus('success');
-            console.log('📍 Position obtenue avec précision normale:', coords);
-            toast.success('Position obtenue avec succès');
-          },
-          (error) => {
-            console.error('❌ Erreur géolocalisation finale:', error);
-            setLocationStatus('error');
-            toast.error('Impossible d\'obtenir votre position. Position par défaut utilisée.');
-            
-            // Fallback vers Douala
-            const defaultCoords: [number, number] = [9.7679, 4.0511];
-            setCoordinates(defaultCoords);
-            setLocationStatus('success');
-          },
-          {
-            enableHighAccuracy: false,
-            timeout: 15000,
-            maximumAge: 300000
-          }
-        );
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 60000
-      }
-    );
   };
 
   // Mapping des types de déchets français vers anglais

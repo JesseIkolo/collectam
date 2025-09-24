@@ -1,6 +1,8 @@
 const WasteRequest = require('../models/WasteRequest');
+const WasteCollectionRequest = require('../models/WasteCollectionRequest');
 const User = require('../models/User');
 const webSocketService = require('../services/WebSocketService');
+const mongoose = require('mongoose');
 
 /**
  * Find the nearest available collector to a given location
@@ -12,16 +14,38 @@ const findNearestCollector = async (coordinates, maxDistance = 50000) => {
   try {
     console.log('🔍 Recherche du collecteur le plus proche pour:', coordinates);
     
-    // Find collectors who are available and have location data
-    // SOLUTION TEMPORAIRE: Utiliser find() au lieu de $geoNear pour éviter l'erreur d'index
-    const availableCollectors = await User.find({
-      userType: 'collecteur',
+    // Collecteurs disponibles avec position valide
+    // Accepte soit userType 'collecteur' soit role 'collector'
+    let availableCollectors = await User.find({
       onDuty: true,
-      'lastLocation.coordinates': { $exists: true, $ne: [] }
+      $or: [
+        { userType: 'collecteur' },
+        { role: 'collector' }
+      ],
+      'lastLocation.coordinates.0': { $exists: true },
+      'lastLocation.coordinates.1': { $exists: true }
     });
 
+    console.log('🚛 Collecteurs candidats trouvés (onDuty):', availableCollectors.length);
+
+    // Fallback: si aucun collecteur "onDuty" n'est trouvé, élargir la recherche
     if (availableCollectors.length === 0) {
-      console.log('❌ Aucun collecteur disponible trouvé');
+      console.log('🔄 Fallback: recherche de collecteurs récents même si onDuty=false');
+      const since = new Date(Date.now() - 60 * 60 * 1000); // 60 minutes
+      availableCollectors = await User.find({
+        $or: [
+          { userType: 'collecteur' },
+          { role: 'collector' }
+        ],
+        'lastLocation.coordinates.0': { $exists: true },
+        'lastLocation.coordinates.1': { $exists: true },
+        lastLocationUpdate: { $gte: since }
+      });
+      console.log('🚛 Collecteurs candidats trouvés (fallback récent):', availableCollectors.length);
+    }
+
+    if (availableCollectors.length === 0) {
+      console.log('❌ Aucun collecteur disponible trouvé (même avec fallback)');
       return null;
     }
 
@@ -42,7 +66,7 @@ const findNearestCollector = async (coordinates, maxDistance = 50000) => {
         
         if (distance < maxDistance && distance < minDistance) {
           minDistance = distance;
-          nearestCollector = { ...collector.toObject(), distance };
+          nearestCollector = { ...collector.toObject(), distance }
         }
       }
     }
@@ -369,95 +393,80 @@ const getWasteStats = async (req, res) => {
     console.log('📊 getWasteStats - Début de la requête ménage');
     const { _id: userId } = req.user;
     console.log('👤 Utilisateur ID:', userId);
-
-    // Debug: Lister toutes les demandes de l'utilisateur avec leurs statuts
-    const allUserRequests = await WasteRequest.find({ userId });
-    console.log('📋 Toutes les demandes de l\'utilisateur:');
-    allUserRequests.forEach(req => {
-      console.log(`  - ID: ${req._id}, Status: ${req.status}, Type: ${req.wasteType}, Poids: ${req.estimatedWeight}kg`);
-      if (req.status === 'completed' && req.collectionDetails) {
-        console.log(`    → Poids réel collecté: ${req.collectionDetails.actualWeight}kg`);
-      }
-    });
-
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    
+    // Récupérer les stats du nouveau modèle (WasteRequest)
     const [
-      totalRequests,
-      pendingRequests,
-      scheduledRequests,
-      completedRequests,
-      cancelledRequests,
-      totalWeight,
-      wasteTypeStats
+      totalNew,
+      pendingNew,
+      scheduledNew,
+      completedNew,
+      cancelledNew,
+      totalWeightNewAgg
     ] = await Promise.all([
       WasteRequest.countDocuments({ userId }),
       WasteRequest.countDocuments({ userId, status: 'pending' }),
       WasteRequest.countDocuments({ userId, status: 'scheduled' }),
       WasteRequest.countDocuments({ userId, status: 'completed' }),
       WasteRequest.countDocuments({ userId, status: 'cancelled' }),
-      // Utiliser le poids réel (actualWeight) pour les collectes terminées
       WasteRequest.aggregate([
-        { $match: { userId: userId, status: 'completed' } },
-        { 
-          $group: { 
-            _id: null, 
-            total: { 
-              $sum: {
-                $ifNull: ['$collectionDetails.actualWeight', '$estimatedWeight']
-              }
-            }
-          } 
-        }
-      ]),
-      WasteRequest.aggregate([
-        { $match: { userId: userId } },
-        { 
-          $group: { 
-            _id: '$wasteType', 
-            count: { $sum: 1 }, 
-            weight: { 
-              $sum: {
-                $cond: {
-                  if: { $eq: ['$status', 'completed'] },
-                  then: { $ifNull: ['$collectionDetails.actualWeight', '$estimatedWeight'] },
-                  else: '$estimatedWeight'
-                }
-              }
-            }
-          } 
-        }
+        { $match: { userId: userObjectId, status: 'completed' } },
+        { $group: { _id: null, total: { $sum: { $ifNull: ['$collectionDetails.actualWeight', '$estimatedWeight'] } } } }
       ])
     ]);
 
-    console.log('📊 Statistiques calculées ménage:');
-    console.log(`  - Total demandes: ${totalRequests}`);
-    console.log(`  - En attente: ${pendingRequests}`);
-    console.log(`  - Programmées: ${scheduledRequests}`);
-    console.log(`  - Terminées: ${completedRequests}`);
-    console.log(`  - Annulées: ${cancelledRequests}`);
-    console.log(`  - Poids total collecté: ${totalWeight[0]?.total || 0}kg`);
+    // Récupérer les stats du modèle legacy (WasteCollectionRequest)
+    const [
+      totalLegacy,
+      pendingLegacy,
+      scheduledLegacy,
+      inProgressLegacy,
+      completedLegacy,
+      cancelledLegacy,
+      totalWeightLegacyAgg
+    ] = await Promise.all([
+      WasteCollectionRequest.countDocuments({ userId }),
+      WasteCollectionRequest.countDocuments({ userId, status: 'pending' }),
+      WasteCollectionRequest.countDocuments({ userId, status: { $in: ['confirmed', 'assigned'] } }),
+      WasteCollectionRequest.countDocuments({ userId, status: 'in_progress' }),
+      WasteCollectionRequest.countDocuments({ userId, status: 'completed' }),
+      WasteCollectionRequest.countDocuments({ userId, status: 'cancelled' }),
+      WasteCollectionRequest.aggregate([
+        { $match: { userId: userObjectId, status: 'completed' } },
+        { $group: { _id: null, total: { $sum: { $ifNull: ['$collectedQuantity', '$quantity'] } } } }
+      ])
+    ]);
+
+    const total = totalNew + totalLegacy;
+    const pending = pendingNew + pendingLegacy;
+    const scheduled = scheduledNew + scheduledLegacy;
+    const in_progress = inProgressLegacy + (await WasteRequest.countDocuments({ userId, status: 'in_progress' }));
+    const completed = completedNew + completedLegacy;
+    const cancelled = cancelledNew + cancelledLegacy;
+    const totalWeight = (totalWeightNewAgg[0]?.total || 0) + (totalWeightLegacyAgg[0]?.total || 0);
+
+    console.log('📊 Statistiques calculées (fusion new + legacy):');
+    console.log(`  - Total demandes: ${total}`);
+    console.log(`  - En attente: ${pending}`);
+    console.log(`  - Programmées: ${scheduled}`);
+    console.log(`  - En cours: ${in_progress}`);
+    console.log(`  - Terminées: ${completed}`);
+    console.log(`  - Annulées: ${cancelled}`);
+    console.log(`  - Poids total collecté: ${totalWeight}kg`);
 
     const stats = {
-      total: totalRequests,
-      pending: pendingRequests,
-      scheduled: scheduledRequests,
-      completed: completedRequests,
-      cancelled: cancelledRequests,
-      totalWeight: totalWeight[0]?.total || 0,
-      wasteTypes: wasteTypeStats.reduce((acc, item) => {
-        acc[item._id] = {
-          count: item.count,
-          weight: item.weight
-        };
-        return acc;
-      }, {})
+      total,
+      pending,
+      scheduled,
+      in_progress,
+      completed,
+      cancelled,
+      totalWeight
     };
 
-    console.log('📊 Stats finales ménage:', stats);
+    console.log('📊 Stats finales ménage (fusion):', stats);
 
-    res.json({
-      success: true,
-      data: stats
-    });
+    res.json({ success: true, data: stats });
   } catch (error) {
     console.error('Get waste stats error:', error);
     res.status(500).json({
@@ -473,9 +482,12 @@ const getWasteStats = async (req, res) => {
 const getAssignedRequests = async (req, res) => {
   try {
     const { _id: collectorId } = req.user;
+    const collectorObjectId = typeof collectorId === 'string' 
+      ? new mongoose.Types.ObjectId(collectorId) 
+      : collectorId;
     
     // Verify that the user is a collector
-    if (req.user.userType !== 'collecteur') {
+    if (req.user.userType !== 'collecteur' && req.user.role !== 'collector') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux collecteurs'
@@ -486,7 +498,7 @@ const getAssignedRequests = async (req, res) => {
     const assignedRequests = await WasteRequest.aggregate([
       {
         $match: {
-          assignedCollector: collectorId,
+          assignedCollector: collectorObjectId,
           status: { $in: ['scheduled', 'in_progress'] }
         }
       },
@@ -548,7 +560,7 @@ const startCollection = async (req, res) => {
     const { _id: collectorId } = req.user;
 
     // Verify that the user is a collector
-    if (req.user.userType !== 'collecteur') {
+    if (req.user.userType !== 'collecteur' && req.user.role !== 'collector') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux collecteurs'
@@ -575,6 +587,19 @@ const startCollection = async (req, res) => {
 
     console.log(`🚛 Collecte démarrée par ${req.user.firstName} ${req.user.lastName} pour la demande ${id}`);
 
+    // Diffuser l'événement temps réel aux clients (ménage + collecteur)
+    try {
+      webSocketService.broadcastCollectionStarted({
+        requestId: id.toString(),
+        collectorId: collectorId.toString(),
+        userId: wasteRequest.userId?._id?.toString?.() || (wasteRequest.userId && wasteRequest.userId.toString ? wasteRequest.userId.toString() : undefined),
+        message: 'Collecte démarrée',
+        timestamp: new Date().toISOString()
+      });
+    } catch (wsErr) {
+      console.warn('⚠️ WS broadcastCollectionStarted a échoué:', wsErr?.message || wsErr);
+    }
+
     res.json({
       success: true,
       message: 'Collecte démarrée avec succès',
@@ -599,7 +624,7 @@ const completeCollection = async (req, res) => {
     const { actualWeight, notes, photos } = req.body;
 
     // Verify that the user is a collector
-    if (req.user.userType !== 'collecteur') {
+    if (req.user.userType !== 'collecteur' && req.user.role !== 'collector') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux collecteurs'
@@ -638,6 +663,20 @@ const completeCollection = async (req, res) => {
     await wasteRequest.save();
     await wasteRequest.populate('userId', 'firstName lastName phone');
 
+    // Diffuser l'événement temps réel aux clients (ménage + collecteur)
+    try {
+      webSocketService.broadcastCollectionCompleted({
+        requestId: id.toString(),
+        collectorId: collectorId.toString(),
+        userId: wasteRequest.userId?._id?.toString?.() || (wasteRequest.userId && wasteRequest.userId.toString ? wasteRequest.userId.toString() : undefined),
+        actualWeight: finalWeight,
+        message: 'Collecte terminée',
+        timestamp: new Date().toISOString()
+      });
+    } catch (wsErr) {
+      console.warn('⚠️ WS broadcastCollectionCompleted a échoué:', wsErr?.message || wsErr);
+    }
+
     res.json({
       success: true,
       message: 'Collecte terminée avec succès',
@@ -653,14 +692,68 @@ const completeCollection = async (req, res) => {
 };
 
 /**
+ * Manually (re)assign the nearest available collector to a pending request
+ */
+const assignNearestCollector = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const wasteRequest = await WasteRequest.findById(id);
+    if (!wasteRequest) {
+      return res.status(404).json({ success: false, message: 'Demande non trouvée' });
+    }
+
+    if (wasteRequest.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'La demande n\'est pas en attente' });
+    }
+
+    // Ensure coordinates exist
+    if (!wasteRequest.coordinates || !Array.isArray(wasteRequest.coordinates.coordinates) || wasteRequest.coordinates.coordinates.length !== 2) {
+      // Fallback to Douala
+      wasteRequest.coordinates = { type: 'Point', coordinates: [9.7043, 4.0511] };
+    }
+
+    const nearestCollector = await findNearestCollector(wasteRequest.coordinates.coordinates);
+    if (!nearestCollector) {
+      return res.status(200).json({ success: true, message: 'Aucun collecteur disponible pour le moment', data: wasteRequest });
+    }
+
+    wasteRequest.assignedCollector = nearestCollector._id;
+    wasteRequest.status = 'scheduled';
+    wasteRequest.scheduledDate = new Date();
+    await wasteRequest.save();
+
+    // Notifications
+    await notifyCollector(nearestCollector._id, wasteRequest);
+    webSocketService.notifyCollectorAssigned(wasteRequest.userId.toString(), {
+      _id: nearestCollector._id,
+      firstName: nearestCollector.firstName,
+      lastName: nearestCollector.lastName,
+      phone: nearestCollector.phone,
+      email: nearestCollector.email
+    });
+
+    await wasteRequest.populate('assignedCollector', 'firstName lastName phone email');
+
+    return res.json({ success: true, message: 'Collecteur assigné avec succès', data: wasteRequest });
+  } catch (error) {
+    console.error('❌ Erreur assignation manuelle du collecteur:', error);
+    return res.status(500).json({ success: false, message: 'Erreur lors de l\'assignation' });
+  }
+};
+
+/**
  * Get collector's collection history and statistics
  */
 const getCollectorStats = async (req, res) => {
   try {
     const { _id: collectorId } = req.user;
+    const collectorObjectId = typeof collectorId === 'string' 
+      ? new mongoose.Types.ObjectId(collectorId) 
+      : collectorId;
 
     // Verify that the user is a collector
-    if (req.user.userType !== 'collecteur') {
+    if (req.user.userType !== 'collecteur' && req.user.role !== 'collector') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux collecteurs'
@@ -675,16 +768,16 @@ const getCollectorStats = async (req, res) => {
       totalWeight,
       recentCollections
     ] = await Promise.all([
-      WasteRequest.countDocuments({ assignedCollector: collectorId }),
-      WasteRequest.countDocuments({ assignedCollector: collectorId, status: 'completed' }),
-      WasteRequest.countDocuments({ assignedCollector: collectorId, status: 'in_progress' }),
-      WasteRequest.countDocuments({ assignedCollector: collectorId, status: 'scheduled' }),
+      WasteRequest.countDocuments({ assignedCollector: collectorObjectId }),
+      WasteRequest.countDocuments({ assignedCollector: collectorObjectId, status: 'completed' }),
+      WasteRequest.countDocuments({ assignedCollector: collectorObjectId, status: 'in_progress' }),
+      WasteRequest.countDocuments({ assignedCollector: collectorObjectId, status: 'scheduled' }),
       WasteRequest.aggregate([
-        { $match: { assignedCollector: collectorId, status: 'completed' } },
+        { $match: { assignedCollector: collectorObjectId, status: 'completed' } },
         { $group: { _id: null, total: { $sum: '$collectionDetails.actualWeight' } } }
       ]),
       WasteRequest.find({ 
-        assignedCollector: collectorId, 
+        assignedCollector: collectorObjectId, 
         status: 'completed' 
       })
         .populate('userId', 'firstName lastName')
@@ -766,6 +859,13 @@ const updateCollectorLocation = async (req, res) => {
 
     console.log('✅ Position collecteur mise à jour:', updatedUser.lastLocation);
 
+    // Tentative d'auto-assignation de demandes en attente à proximité
+    try {
+      await autoAssignPendingRequestsForCollector(updatedUser._id);
+    } catch (autoErr) {
+      console.warn('⚠️ Auto-assign des demandes en attente a échoué:', autoErr?.message || autoErr);
+    }
+
     res.json({
       success: true,
       message: 'Position mise à jour avec succès',
@@ -839,9 +939,13 @@ const getActiveCollectors = async (req, res) => {
     console.log('🚛 Récupération collecteurs actifs');
 
     const activeCollectors = await User.find({
-      role: 'collector',
       onDuty: true,
-      lastLocation: { $exists: true },
+      $or: [
+        { userType: 'collecteur' },
+        { role: 'collector' }
+      ],
+      'lastLocation.coordinates.0': { $exists: true },
+      'lastLocation.coordinates.1': { $exists: true },
       lastLocationUpdate: {
         $gte: new Date(Date.now() - 30 * 60 * 1000) // Dernière mise à jour dans les 30 minutes
       }
@@ -869,6 +973,74 @@ const getActiveCollectors = async (req, res) => {
   }
 };
 
+/**
+ * Attempt to auto-assign the nearest available collector (current collector) to recent pending requests
+ * Called when a collector updates their location and goes on duty
+ */
+async function autoAssignPendingRequestsForCollector(collectorId) {
+  try {
+    const collector = await User.findById(collectorId).lean();
+    if (!collector || !collector.lastLocation || !Array.isArray(collector.lastLocation.coordinates)) {
+      console.log('ℹ️ Auto-assign ignoré: collector sans position');
+      return;
+    }
+
+    // Chercher quelques demandes en attente récentes
+    const pendingRequests = await WasteRequest.find({ status: 'pending' })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+
+    if (pendingRequests.length === 0) {
+      console.log('ℹ️ Auto-assign: aucune demande en attente');
+      return;
+    }
+
+    console.log(`🔁 Auto-assign: ${pendingRequests.length} demandes en attente à vérifier`);
+
+    for (const req of pendingRequests) {
+      if (!req.coordinates || !req.coordinates.coordinates || req.coordinates.coordinates.length !== 2) {
+        continue;
+      }
+
+      // Vérifier qui est le plus proche pour cette demande
+      const nearest = await findNearestCollector(req.coordinates.coordinates);
+      if (nearest && String(nearest._id) === String(collectorId)) {
+        // Assigner si la demande est toujours en attente
+        const updated = await WasteRequest.findOneAndUpdate(
+          { _id: req._id, status: 'pending' },
+          { 
+            $set: { 
+              assignedCollector: collectorId, 
+              status: 'scheduled',
+              scheduledDate: new Date() 
+            } 
+          },
+          { new: true }
+        );
+
+        if (updated) {
+          console.log(`✅ Auto-assign: demande ${updated._id} assignée au collecteur ${collectorId}`);
+
+          // Notifications
+          try { await notifyCollector(collectorId, updated); } catch {}
+          try {
+            webSocketService.notifyCollectorAssigned(updated.userId.toString(), {
+              _id: collector._id,
+              firstName: collector.firstName,
+              lastName: collector.lastName,
+              phone: collector.phone,
+              email: collector.email
+            });
+          } catch {}
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erreur auto-assign demandes en attente:', error);
+  }
+};
+
 module.exports = {
   getWasteRequests,
   createWasteRequest,
@@ -881,6 +1053,7 @@ module.exports = {
   startCollection,
   completeCollection,
   getCollectorStats,
+  assignNearestCollector,
   // New geolocation functions
   updateCollectorLocation,
   getCollectorLocation,

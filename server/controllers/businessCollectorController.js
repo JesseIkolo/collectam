@@ -15,23 +15,65 @@ const createBusinessCollector = async (req, res) => {
       });
     }
 
-    // Vérifier si l'email existe déjà
-    const existingCollector = await BusinessCollector.findOne({ 
-      email: req.body.email.toLowerCase() 
-    });
-    
-    if (existingCollector) {
+    // Normaliser email
+    const email = (req.body.email || '').toLowerCase();
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email requis' });
+    }
+
+    // Vérifier que l'email correspond à un compte collecteur existant (plateforme)
+    const platformCollector = await User.findOne({
+      email,
+      $or: [ { userType: 'collecteur' }, { role: 'collector' } ]
+    }).select('_id firstName lastName email userType role');
+
+    if (!platformCollector) {
       return res.status(400).json({
         success: false,
-        message: 'Un collecteur avec cet email existe déjà'
+        message: 'Cet email ne correspond à aucun compte collecteur Collectam. Demandez au collecteur de créer d\'abord un compte.'
       });
     }
 
-    // Créer le collecteur
-    const collectorData = {
-      ...req.body,
+    // Empêcher le doublon de liaison pour ce Business
+    const alreadyLinked = await BusinessCollector.findOne({
       businessOwnerId,
-      email: req.body.email.toLowerCase()
+      linkedUserId: platformCollector._id
+    });
+    if (alreadyLinked) {
+      return res.status(409).json({
+        success: false,
+        message: 'Ce collecteur est déjà lié à votre organisation'
+      });
+    }
+
+    // Vérifier doublon email dans BusinessCollector (sécurité)
+    const existingCollector = await BusinessCollector.findOne({ email });
+    if (existingCollector) {
+      return res.status(400).json({ success: false, message: 'Un collecteur avec cet email existe déjà' });
+    }
+
+    // Construire les données (adresse sans rue/CP)
+    const address = {
+      city: req.body?.address?.city || undefined,
+      region: req.body?.address?.region || undefined,
+      country: 'Cameroun'
+    };
+
+    // Créer le collecteur lié
+    const collectorData = {
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
+      email,
+      phone: req.body.phone,
+      employeeId: req.body.employeeId,
+      position: req.body.position,
+      businessOwnerId,
+      status: req.body.status || 'actif',
+      workZone: req.body.workZone,
+      address,
+      salary: req.body.salary,
+      notes: req.body.notes,
+      linkedUserId: platformCollector._id
     };
 
     const newCollector = new BusinessCollector(collectorData);
@@ -53,6 +95,7 @@ const createBusinessCollector = async (req, res) => {
           status: newCollector.status,
           employeeId: newCollector.employeeId,
           workZone: newCollector.workZone,
+          linkedUserId: newCollector.linkedUserId,
           createdAt: newCollector.createdAt
         }
       }
@@ -195,25 +238,66 @@ const updateBusinessCollector = async (req, res) => {
       });
     }
 
-    // Vérifier l'email si modifié
-    if (req.body.email && req.body.email.toLowerCase() !== collector.email) {
-      const existingCollector = await BusinessCollector.findOne({
-        email: req.body.email.toLowerCase(),
+    // Vérifier l'email si modifié → relier au compte Collectam correspondant
+    let updateData = { ...req.body };
+    // Si le collecteur n'était pas encore lié (ancien enregistrement), essayer de le lier via l'email actuel
+    if (!collector.linkedUserId) {
+      const emailToLink = (updateData.email || collector.email || '').toLowerCase();
+      const platformCollectorForLegacy = await User.findOne({
+        email: emailToLink,
+        $or: [ { userType: 'collecteur' }, { role: 'collector' } ]
+      }).select('_id');
+      if (!platformCollectorForLegacy) {
+        return res.status(400).json({ success: false, message: 'Ce collecteur n\'est pas lié à un compte Collectam. Modifiez son email pour un compte collecteur valide.' });
+      }
+      const alreadyLinkedLegacy = await BusinessCollector.findOne({
+        businessOwnerId,
+        linkedUserId: platformCollectorForLegacy._id,
         _id: { $ne: id }
       });
-
-      if (existingCollector) {
-        return res.status(400).json({
-          success: false,
-          message: 'Un collecteur avec cet email existe déjà'
-        });
+      if (alreadyLinkedLegacy) {
+        return res.status(409).json({ success: false, message: 'Ce compte collecteur est déjà lié à votre organisation' });
       }
+      updateData.linkedUserId = platformCollectorForLegacy._id;
+      updateData.email = emailToLink;
+    }
+    if (updateData.email && updateData.email.toLowerCase() !== collector.email) {
+      const email = updateData.email.toLowerCase();
+      const existsOther = await BusinessCollector.findOne({ email, _id: { $ne: id } });
+      if (existsOther) {
+        return res.status(400).json({ success: false, message: 'Un collecteur avec cet email existe déjà' });
+      }
+
+      const platformCollector = await User.findOne({
+        email,
+        $or: [ { userType: 'collecteur' }, { role: 'collector' } ]
+      }).select('_id');
+
+      if (!platformCollector) {
+        return res.status(400).json({ success: false, message: 'Cet email ne correspond à aucun compte collecteur Collectam' });
+      }
+
+      // Empêcher double liaison pour ce business
+      const alreadyLinked = await BusinessCollector.findOne({
+        businessOwnerId,
+        linkedUserId: platformCollector._id,
+        _id: { $ne: id }
+      });
+      if (alreadyLinked) {
+        return res.status(409).json({ success: false, message: 'Ce collecteur est déjà lié à votre organisation' });
+      }
+
+      updateData.email = email;
+      updateData.linkedUserId = platformCollector._id;
     }
 
-    // Mettre à jour
-    const updateData = { ...req.body };
-    if (updateData.email) {
-      updateData.email = updateData.email.toLowerCase();
+    // Nettoyer l'adresse (supprimer rue / code postal)
+    if (updateData.address) {
+      updateData.address = {
+        city: updateData.address.city || undefined,
+        region: updateData.address.region || undefined,
+        country: 'Cameroun'
+      };
     }
 
     const updatedCollector = await BusinessCollector.findByIdAndUpdate(
@@ -321,11 +405,102 @@ const assignVehicleToCollector = async (req, res) => {
   }
 };
 
+// Lister les collectes assignées aux collecteurs Business (nouveau + legacy)
+const getAssignedCollections = async (req, res) => {
+  try {
+    const businessOwnerId = req.user.id;
+    // Statuts par défaut: programmées et en cours
+    const statusParam = (req.query.status || 'scheduled,in_progress').toString();
+    const statuses = statusParam.split(',').map(s => s.trim()).filter(Boolean);
+    const { from, to } = req.query;
+    let dateFilter = {};
+    if (from || to) {
+      const start = from ? new Date(from) : new Date('1970-01-01');
+      const end = to ? new Date(to) : new Date();
+      dateFilter = { createdAt: { $gte: start, $lte: end } };
+    }
+
+    // Récupérer les linkedUserId des collecteurs de ce Business
+    const collectors = await BusinessCollector.find({ businessOwnerId }).select('linkedUserId');
+    const linkedCollectorIds = collectors.map(c => c.linkedUserId).filter(Boolean);
+
+    if (linkedCollectorIds.length === 0) {
+      return res.json({ success: true, data: [], count: 0 });
+    }
+
+    const mongoose = require('mongoose');
+    const WasteRequest = require('../models/WasteRequest');
+    const WasteCollectionRequest = require('../models/WasteCollectionRequest');
+
+    // Construire filtres
+    const linkedIds = linkedCollectorIds.map(id => typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id);
+
+    const [newModel, legacyModel] = await Promise.all([
+      WasteRequest.find({ assignedCollector: { $in: linkedIds }, status: { $in: statuses }, ...dateFilter })
+        .populate('userId', 'firstName lastName phone')
+        .populate('assignedCollector', 'firstName lastName phone email lastLocation')
+        .sort({ scheduledDate: 1, createdAt: -1 })
+        .lean(),
+      WasteCollectionRequest.find({ assignedCollector: { $in: linkedIds }, status: { $in: statuses }, ...dateFilter })
+        .populate('userId', 'firstName lastName phone')
+        .populate('assignedCollector', 'firstName lastName phone email lastLocation')
+        .sort({ preferredDate: 1, createdAt: -1 })
+        .lean()
+    ]);
+
+    // Unifier le format
+    const unified = [
+      ...newModel.map(r => ({
+        _id: r._id,
+        model: 'new',
+        user: r.userId,
+        assignedCollector: r.assignedCollector,
+        wasteType: r.wasteType,
+        description: r.description,
+        estimatedWeight: r.estimatedWeight,
+        address: r.address,
+        coordinates: r.coordinates, // { type: 'Point', coordinates: [lng, lat] }
+        status: r.status,
+        scheduledDate: r.scheduledDate || r.preferredDate,
+        preferredDate: r.preferredDate,
+        preferredTime: r.preferredTime,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt
+      })),
+      ...legacyModel.map(r => ({
+        _id: r._id,
+        model: 'legacy',
+        user: r.userId,
+        assignedCollector: r.assignedCollector,
+        wasteType: r.wasteType,
+        description: r.description,
+        estimatedWeight: r.quantity,
+        address: r.address,
+        coordinates: Array.isArray(r.coordinates)
+          ? { type: 'Point', coordinates: r.coordinates }
+          : r.coordinates,
+        status: r.status,
+        scheduledDate: r.preferredDate,
+        preferredDate: r.preferredDate,
+        preferredTime: r.preferredTime,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt
+      }))
+    ];
+
+    res.json({ success: true, data: unified, count: unified.length });
+  } catch (error) {
+    console.error('❌ Erreur récupération collectes assignées Business:', error);
+    res.status(500).json({ success: false, message: 'Erreur lors de la récupération des collectes assignées' });
+  }
+};
+
 module.exports = {
   createBusinessCollector,
   getBusinessCollectors,
   getBusinessCollectorById,
   updateBusinessCollector,
   deleteBusinessCollector,
-  assignVehicleToCollector
+  assignVehicleToCollector,
+  getAssignedCollections
 };

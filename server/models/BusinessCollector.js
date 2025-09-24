@@ -43,6 +43,12 @@ const businessCollectorSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  // Lien vers le compte Collectam du collecteur (User)
+  linkedUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   // Statut du collecteur
   status: {
     type: String,
@@ -72,10 +78,8 @@ const businessCollectorSchema = new mongoose.Schema({
   },
   // Adresse du collecteur
   address: {
-    street: String,
     city: String,
     region: String,
-    postalCode: String,
     country: {
       type: String,
       default: 'Cameroun'
@@ -129,6 +133,7 @@ businessCollectorSchema.index({ businessOwnerId: 1, status: 1 });
 businessCollectorSchema.index({ email: 1 });
 businessCollectorSchema.index({ employeeId: 1, businessOwnerId: 1 });
 businessCollectorSchema.index({ assignedVehicleId: 1 });
+businessCollectorSchema.index({ linkedUserId: 1, businessOwnerId: 1 });
 
 // Méthode pour obtenir le nom complet
 businessCollectorSchema.virtual('fullName').get(function() {

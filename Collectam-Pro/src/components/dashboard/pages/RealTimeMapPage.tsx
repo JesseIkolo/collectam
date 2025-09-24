@@ -51,7 +51,7 @@ export function RealTimeMapPage() {
   });
   const [searchAddress, setSearchAddress] = useState("");
   const [selectedCollector, setSelectedCollector] = useState<CollectorLocation | null>(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
   const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined);
   const searchParams = useSearchParams();
@@ -183,15 +183,19 @@ export function RealTimeMapPage() {
 
       // Récupérer les vraies demandes de l'utilisateur avec collecteurs assignés
       const wasteRequestsWithCollectors = await loadUserWasteRequests();
+      // Dédupliquer par _id pour éviter les doublons
+      const uniqueRequests: any[] = Array.from(
+        new Map((wasteRequestsWithCollectors || []).map((r: any) => [r._id, r])).values()
+      );
       
       setCollectors(collectorsData);
       setCollections(mockCollections);
-      setWasteRequestsForMap(wasteRequestsWithCollectors);
+      setWasteRequestsForMap(uniqueRequests);
       
       // Center on focused request if provided via query param
       const focusId = searchParams ? searchParams.get('focus') : null;
       if (focusId) {
-        const target = wasteRequestsWithCollectors.find((r: any) => r._id === focusId && r.coordinates && r.coordinates.coordinates && Array.isArray(r.coordinates.coordinates));
+        const target = uniqueRequests.find((r: any) => r._id === focusId && r.coordinates && r.coordinates.coordinates && Array.isArray(r.coordinates.coordinates));
         if (target && target.coordinates && target.coordinates.coordinates) {
           setMapCenter(target.coordinates.coordinates as [number, number]);
         }

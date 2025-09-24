@@ -131,9 +131,26 @@ class AuthService {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        this.setToken(data.token);
-        this.setUser(data.user);
-        return { success: true, user: data.user };
+        const payload = data.data || {};
+        const accessToken = payload.accessToken || payload.token;
+        const apiUser = payload.user || data.user || {};
+        const mappedUser: User = {
+          _id: apiUser._id || apiUser.id,
+          firstName: apiUser.firstName,
+          lastName: apiUser.lastName,
+          email: apiUser.email,
+          phone: apiUser.phone,
+          userType: apiUser.userType,
+          role: apiUser.role,
+          companyName: apiUser.companyName,
+          subscription: apiUser.subscription
+        };
+        if (!accessToken) {
+          return { success: false, message: 'Token manquant dans la réponse du serveur' };
+        }
+        this.setToken(accessToken);
+        this.setUser(mappedUser);
+        return { success: true, user: mappedUser };
       } else {
         return { success: false, message: data.message || 'Login failed' };
       }
@@ -167,9 +184,26 @@ class AuthService {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        this.setToken(data.token);
-        this.setUser(data.user);
-        return { success: true, user: data.user };
+        const payload = data.data || {};
+        const accessToken = payload.accessToken || payload.token;
+        const apiUser = payload.user || data.user || {};
+        const mappedUser: User = {
+          _id: apiUser._id || apiUser.id,
+          firstName: apiUser.firstName,
+          lastName: apiUser.lastName,
+          email: apiUser.email,
+          phone: apiUser.phone,
+          userType: apiUser.userType,
+          role: apiUser.role,
+          companyName: apiUser.companyName,
+          subscription: apiUser.subscription
+        };
+        if (!accessToken) {
+          return { success: false, message: 'Token manquant dans la réponse du serveur' };
+        }
+        this.setToken(accessToken);
+        this.setUser(mappedUser);
+        return { success: true, user: mappedUser };
       } else {
         return { success: false, message: data.message || 'Registration failed' };
       }

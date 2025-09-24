@@ -9,8 +9,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MapPin, Calendar, Award, Plus, AlertTriangle, Trash2, Clock, Building } from "lucide-react";
 import { dashboardService } from "@/services/DashboardService";
 import { wasteService } from "@/services/WasteService";
+import { wasteRequestService } from "@/services/WasteRequestService";
 import Link from "next/link";
 import { DonutChart, CustomLineChart } from "@/components/charts";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { toast } from "sonner";
 
 interface UserDashboardData {
   totalRequests: number;
@@ -50,31 +53,63 @@ export function UserDashboard() {
 
   useEffect(() => {
     loadDashboardData();
+    // Rafraîchir automatiquement quand une demande est créée/mise à jour
+    const onWasteRequestsUpdated = () => {
+      console.log('🔄 Événement waste_requests_updated reçu → rafraîchissement du dashboard ménage');
+      loadDashboardData();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('waste_requests_updated', onWasteRequestsUpdated as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('waste_requests_updated', onWasteRequestsUpdated as EventListener);
+      }
+    };
   }, [getRecentRequests]);
+
+  // WebSocket: rafraîchir les métriques quand l'état des demandes change côté serveur
+  useWebSocket({
+    onCollectorAssigned: (data) => {
+      console.log('🚛 WS: Collecteur assigné → refresh ménage', data);
+      try { toast.success('Collecteur assigné à votre demande'); } catch {}
+      loadDashboardData();
+    },
+    onCollectionStarted: (data) => {
+      console.log('▶️ WS: Collecte démarrée → refresh ménage', data);
+      try { toast.info('Votre collecte a démarré'); } catch {}
+      loadDashboardData();
+    },
+    onCollectionCompleted: (data) => {
+      console.log('✅ WS: Collecte terminée → refresh ménage', data);
+      try { toast.success('Votre collecte est terminée'); } catch {}
+      loadDashboardData();
+    },
+  });
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
       console.log('🏠 Chargement des données dashboard ménage...');
       
-      // Récupérer les vraies données depuis l'API
+      // Récupérer les vraies données depuis l'API avec le même service que /user/waste-management
       const token = localStorage.getItem('accessToken');
-      const [wasteRequestsResponse, userStatsResponse] = await Promise.allSettled([
-        fetch('/api/waste-collection-requests/user', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch('/api/user/stats', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const [userRequestsResult, wasteStatsResult, userStatsResponse] = await Promise.allSettled([
+        wasteRequestService.getUserRequests(),
+        wasteRequestService.getUserStats(),
+        fetch(`${baseUrl}/api/user/stats`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
 
       // Traiter les demandes de collecte
-      let userRequests = [];
-      if (wasteRequestsResponse.status === 'fulfilled' && wasteRequestsResponse.value.ok) {
-        const requestsResult = await wasteRequestsResponse.value.json();
-        userRequests = requestsResult.data || [];
-      } else {
-        // Fallback vers le contexte si l'API n'est pas disponible
+      // Les demandes utilisateur via le service (fusion new/legacy déjà faite)
+      let userRequests: any[] = [];
+      if (userRequestsResult.status === 'fulfilled') {
+        userRequests = userRequestsResult.value || [];
+      }
+      
+      if (userRequests.length === 0) {
+        // Fallback vers le contexte si les APIs ne renvoient rien
         userRequests = getRecentRequests(10);
       }
 
@@ -85,13 +120,28 @@ export function UserDashboard() {
         userStats = statsResult.data || {};
       }
 
-      // Calculer les métriques réelles
-      const totalWeight = userRequests.reduce((sum: number, req: any) => sum + (req.estimatedWeight || 0), 0);
-      const pendingRequests = userRequests.filter((r: any) => r.status === 'pending').length;
-      const completedRequests = userRequests.filter((r: any) => r.status === 'completed').length;
-      const scheduledRequests = userRequests.filter((r: any) => r.status === 'scheduled').length;
-      const inProgressRequests = userRequests.filter((r: any) => r.status === 'in_progress').length;
-      const cancelledRequests = userRequests.filter((r: any) => r.status === 'cancelled').length;
+      // Statistiques backend des demandes (source de vérité)
+      let wasteStats: any = null;
+      if (wasteStatsResult.status === 'fulfilled') {
+        wasteStats = wasteStatsResult.value || null;
+      }
+
+      // Calculs locaux (fallback)
+      const totalWeightLocal = userRequests.reduce((sum: number, req: any) => sum + (req.estimatedWeight || 0), 0);
+      const pendingRequestsLocal = userRequests.filter((r: any) => r.status === 'pending').length;
+      const completedRequestsLocal = userRequests.filter((r: any) => r.status === 'completed').length;
+      const scheduledRequestsLocal = userRequests.filter((r: any) => r.status === 'scheduled').length;
+      const inProgressRequestsLocal = userRequests.filter((r: any) => r.status === 'in_progress').length;
+      const cancelledRequestsLocal = userRequests.filter((r: any) => r.status === 'cancelled').length;
+
+      // Utiliser les stats backend si disponibles, sinon fallback sur les calculs locaux
+      const totalRequests = (wasteStats && typeof wasteStats.total === 'number') ? wasteStats.total : userRequests.length;
+      const pendingRequests = (wasteStats && typeof wasteStats.pending === 'number') ? wasteStats.pending : pendingRequestsLocal;
+      const completedRequests = (wasteStats && typeof wasteStats.completed === 'number') ? wasteStats.completed : completedRequestsLocal;
+      const scheduledRequests = (wasteStats && typeof wasteStats.scheduled === 'number') ? wasteStats.scheduled : scheduledRequestsLocal;
+      const inProgressRequests = (wasteStats && typeof wasteStats.in_progress === 'number') ? wasteStats.in_progress : inProgressRequestsLocal;
+      const cancelledRequests = (wasteStats && typeof wasteStats.cancelled === 'number') ? wasteStats.cancelled : cancelledRequestsLocal;
+      const totalWeight = (wasteStats && typeof wasteStats.totalWeight === 'number') ? wasteStats.totalWeight : totalWeightLocal;
       
       // Tendance 7 jours (nombre de demandes créées par jour)
       const trend7Days = Array.from({ length: 7 }).map((_, i) => {
@@ -119,7 +169,7 @@ export function UserDashboard() {
         }));
 
       const dashboardData: UserDashboardData = {
-        totalRequests: userRequests.length,
+        totalRequests,
         pendingRequests,
         completedRequests,
         totalWeight,

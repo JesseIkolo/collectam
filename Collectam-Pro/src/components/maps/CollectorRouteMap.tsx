@@ -67,6 +67,53 @@ const CollectorRouteMap: React.FC<CollectorRouteMapProps> = ({
   const [routeLayers, setRouteLayers] = useState<RouteLayer[]>([]);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
 
+  // Assurer l'unicité des demandes par _id afin d'éviter les clés React dupliquées et les marqueurs en double
+  const uniqueAssignedRequests = useMemo(() => {
+    const map = new Map<string, WasteRequest>();
+    (assignedRequests || []).forEach((r) => {
+      if (r && r._id && !map.has(r._id)) {
+        map.set(r._id, r);
+      }
+    });
+    return Array.from(map.values());
+  }, [assignedRequests]);
+
+  // Hoisted helpers to avoid TDZ issues in useMemo
+  function getUrgencyLabel(urgency: string) {
+    const labels: { [key: string]: string } = {
+      'low': 'Faible',
+      'medium': 'Moyenne',
+      'high': 'Élevée',
+      'urgent': 'Urgent'
+    };
+    return labels[urgency] || urgency;
+  }
+
+  function getStatusLabel(status: string) {
+    const labels: { [key: string]: string } = {
+      'pending': 'En attente',
+      'scheduled': 'Programmé',
+      'in_progress': 'En cours',
+      'completed': 'Terminé',
+      'cancelled': 'Annulé'
+    };
+    return labels[status] || status;
+  }
+
+  function getWasteTypeLabel(type: string) {
+    const labels: { [key: string]: string } = {
+      'organic': 'Organique',
+      'plastic': 'Plastique',
+      'paper': 'Papier/Carton',
+      'glass': 'Verre',
+      'metal': 'Métal',
+      'electronic': 'Électronique',
+      'hazardous': 'Dangereux',
+      'mixed': 'Mixte'
+    };
+    return labels[type] || type;
+  }
+
   const mapMarkers = useMemo(() => {
     const markers: MapMarker[] = [];
 
@@ -92,8 +139,8 @@ const CollectorRouteMap: React.FC<CollectorRouteMapProps> = ({
       });
     }
 
-    // Marqueurs pour les demandes assignées
-    assignedRequests.forEach((request, index) => {
+    // Marqueurs pour les demandes assignées (uniques)
+    uniqueAssignedRequests.forEach((request, index) => {
       if (request.coordinates) {
         markers.push({
           id: `request-${request._id}`,
@@ -148,42 +195,9 @@ const CollectorRouteMap: React.FC<CollectorRouteMapProps> = ({
     });
 
     return markers;
-  }, [assignedRequests, collectorLocation, onNavigateToLocation, onStartCollection, onCompleteCollection]);
+  }, [uniqueAssignedRequests, collectorLocation, onNavigateToLocation, onStartCollection, onCompleteCollection]);
 
-  const getUrgencyLabel = (urgency: string) => {
-    const labels: { [key: string]: string } = {
-      'low': 'Faible',
-      'medium': 'Moyenne',
-      'high': 'Élevée',
-      'urgent': 'Urgent'
-    };
-    return labels[urgency] || urgency;
-  };
-
-  const getStatusLabel = (status: string) => {
-    const labels: { [key: string]: string } = {
-      'pending': 'En attente',
-      'scheduled': 'Programmé',
-      'in_progress': 'En cours',
-      'completed': 'Terminé',
-      'cancelled': 'Annulé'
-    };
-    return labels[status] || status;
-  };
-
-  const getWasteTypeLabel = (type: string) => {
-    const labels: { [key: string]: string } = {
-      'organic': 'Organique',
-      'plastic': 'Plastique',
-      'paper': 'Papier/Carton',
-      'glass': 'Verre',
-      'metal': 'Métal',
-      'electronic': 'Électronique',
-      'hazardous': 'Dangereux',
-      'mixed': 'Mixte'
-    };
-    return labels[type] || type;
-  };
+  
 
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
@@ -210,7 +224,7 @@ const CollectorRouteMap: React.FC<CollectorRouteMapProps> = ({
 
   // Calculer et afficher l'itinéraire optimisé avec algorithme avancé
   const calculateOptimizedRoute = async () => {
-    if (!collectorLocation || assignedRequests.length === 0) return;
+    if (!collectorLocation || uniqueAssignedRequests.length === 0) return;
 
     setIsCalculatingRoute(true);
     
@@ -221,7 +235,7 @@ const CollectorRouteMap: React.FC<CollectorRouteMapProps> = ({
         address: 'Position collecteur'
       };
 
-      const pendingRequests = assignedRequests.filter(req => 
+      const pendingRequests = uniqueAssignedRequests.filter(req => 
         req.coordinates && req.status !== 'completed'
       );
 
@@ -379,10 +393,10 @@ const CollectorRouteMap: React.FC<CollectorRouteMapProps> = ({
   // Fonction de compatibilité pour l'ancien bouton
   const optimizeRoute = calculateOptimizedRoute;
 
-  const totalWeight = assignedRequests.reduce((sum, req) => sum + req.estimatedWeight, 0);
-  const completedCount = assignedRequests.filter(req => req.status === 'completed').length;
-  const inProgressCount = assignedRequests.filter(req => req.status === 'in_progress').length;
-  const scheduledCount = assignedRequests.filter(req => req.status === 'scheduled').length;
+  const totalWeight = uniqueAssignedRequests.reduce((sum, req) => sum + req.estimatedWeight, 0);
+  const completedCount = uniqueAssignedRequests.filter(req => req.status === 'completed').length;
+  const inProgressCount = uniqueAssignedRequests.filter(req => req.status === 'in_progress').length;
+  const scheduledCount = uniqueAssignedRequests.filter(req => req.status === 'scheduled').length;
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -393,7 +407,7 @@ const CollectorRouteMap: React.FC<CollectorRouteMapProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total collectes</p>
-                <p className="text-2xl font-bold">{assignedRequests.length}</p>
+                <p className="text-2xl font-bold">{uniqueAssignedRequests.length}</p>
               </div>
               <MapPin className="h-8 w-8 text-blue-500" />
             </div>
@@ -450,7 +464,7 @@ const CollectorRouteMap: React.FC<CollectorRouteMapProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={optimizeRoute}
-                disabled={assignedRequests.length <= 1 || isCalculatingRoute}
+                disabled={uniqueAssignedRequests.length <= 1 || isCalculatingRoute}
               >
                 {isCalculatingRoute ? (
                   <>
@@ -497,7 +511,7 @@ const CollectorRouteMap: React.FC<CollectorRouteMapProps> = ({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {assignedRequests.map((request, index) => (
+            {uniqueAssignedRequests.map((request, index) => (
               <div
                 key={request._id}
                 className={`p-4 border rounded-lg ${

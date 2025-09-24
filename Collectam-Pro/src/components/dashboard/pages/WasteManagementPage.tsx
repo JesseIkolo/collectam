@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,8 @@ import { Plus, Trash2, Edit, Calendar, MapPin, Clock, AlertTriangle, CheckCircle
 import { CreateWasteRequestForm } from "../forms/CreateWasteRequestForm";
 import { useWasteRequests } from "@/contexts/WasteRequestContext";
 import { wasteService, WasteRequest } from "@/services/WasteService";
+import { wasteRequestService } from "@/services/WasteRequestService";
+import useWebSocket from "@/hooks/useWebSocket";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
@@ -51,6 +53,73 @@ export function WasteManagementPage() {
   const [error, setError] = useState<string | null>(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [tableData, setTableData] = useState<WasteRequestData[]>([]);
+
+  // Charger depuis l'API (fusion des deux modèles) et dédupliquer
+  const loadUserRequests = async () => {
+    try {
+      setLoading(true);
+      const requests = await wasteRequestService.getUserRequests();
+      const mapped: WasteRequestData[] = (requests || []).map((r: any) => ({
+        id: r._id || r.id,
+        wasteType: r.wasteType || "",
+        description: r.description || "",
+        estimatedWeight: r.estimatedWeight || 0,
+        address: r.address || "",
+        status: r.status || "pending",
+        urgency: r.urgency || "medium",
+        preferredDate: r.preferredDate || r.createdAt || new Date().toISOString(),
+        preferredTime: r.preferredTime || "",
+        createdAt: r.createdAt || new Date().toISOString(),
+      }));
+      setTableData(mapped);
+      setError(null);
+      console.log(`📋 WasteManagementPage: ${mapped.length} demandes chargées (fusion)`);
+    } catch (err) {
+      console.error('❌ Erreur chargement demandes (WasteManagementPage):', err);
+      setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // WS: rafraîchir quand assignation/début/fin
+  useWebSocket({
+    onCollectorAssigned: (data) => {
+      try { toast.success('Collecteur assigné à votre demande'); } catch {}
+      loadUserRequests();
+    },
+    onCollectionStarted: (data) => {
+      try { toast.info('Votre collecte a démarré'); } catch {}
+      loadUserRequests();
+    },
+    onCollectionCompleted: (data) => {
+      try { toast.success('Votre collecte est terminée'); } catch {}
+      loadUserRequests();
+    },
+  });
+
+  // Charger au montage et écouter l'événement personnalisé
+  useEffect(() => {
+    loadUserRequests();
+    const onUpdated = (evt?: Event) => {
+      try {
+        const detail = (evt as CustomEvent)?.detail;
+        if (detail?.reason === 'created') toast.success('Demande créée');
+        if (detail?.reason === 'updated') toast.info('Demande mise à jour');
+        if (detail?.reason === 'deleted') toast.success('Demande supprimée');
+      } catch {}
+      loadUserRequests();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('waste_requests_updated', onUpdated as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('waste_requests_updated', onUpdated as EventListener);
+      }
+    };
+  }, []);
 
   // Colonnes pour la DataTable
   const columns: ColumnDef<WasteRequestData>[] = [
@@ -154,6 +223,24 @@ export function WasteManagementPage() {
           >
             <Edit className="h-4 w-4" />
           </Button>
+          {row.original.status === 'pending' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  await wasteRequestService.assignNearest(row.original.id);
+                  toast.success('Collecteur assigné (plus proche)');
+                  loadUserRequests();
+                } catch (e) {
+                  console.error('❌ Assignation échouée:', e);
+                  toast.error('Impossible d\'assigner un collecteur pour le moment');
+                }
+              }}
+            >
+              Assigner
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -167,8 +254,9 @@ export function WasteManagementPage() {
   ];
 
   // Configuration de la table
+  const dataSource = tableData.length ? tableData : wasteRequests;
   const table = useReactTable({
-    data: wasteRequests,
+    data: dataSource,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -195,7 +283,17 @@ export function WasteManagementPage() {
 
   const handleDelete = async (id: string) => {
     try {
+      // Tentative côté serveur si possible
+      try {
+        await wasteRequestService.deleteRequest(id);
+        // Notifier l'app pour rafraîchir autres vues
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('waste_requests_updated', { detail: { reason: 'deleted', id } }));
+        }
+      } catch {}
+      // Mise à jour locale (contexte + table)
       deleteWasteRequest(id);
+      setTableData(prev => prev.filter(r => r.id !== id));
       toast.success("Demande supprimée avec succès");
     } catch (err) {
       toast.error("Erreur lors de la suppression");
@@ -299,7 +397,7 @@ export function WasteManagementPage() {
             <Trash2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{wasteRequests.length}</div>
+            <div className="text-2xl font-bold">{dataSource.length}</div>
             <p className="text-xs text-muted-foreground">demandes</p>
           </CardContent>
         </Card>
@@ -310,7 +408,7 @@ export function WasteManagementPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {wasteRequests.filter(r => r.status === "pending").length}
+              {dataSource.filter((r: any) => r.status === "pending").length}
             </div>
             <p className="text-xs text-muted-foreground">demandes</p>
           </CardContent>
@@ -322,7 +420,7 @@ export function WasteManagementPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {wasteRequests.filter(r => r.status === "scheduled").length}
+              {dataSource.filter((r: any) => r.status === "scheduled").length}
             </div>
             <p className="text-xs text-muted-foreground">demandes</p>
           </CardContent>
@@ -334,7 +432,7 @@ export function WasteManagementPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {wasteRequests.filter(r => r.status === "completed").length}
+              {dataSource.filter((r: any) => r.status === "completed").length}
             </div>
             <p className="text-xs text-muted-foreground">demandes</p>
           </CardContent>

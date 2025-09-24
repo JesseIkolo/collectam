@@ -172,6 +172,14 @@ export function WasteRequestProvider({ children }: { children: ReactNode }) {
         
         setWasteRequests(prev => [newRequest, ...prev]);
         console.log(' Demande ajoutée au contexte:', newRequest);
+        // Notifier les autres vues (dashboard, historiques, etc.)
+        try {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('waste_requests_updated', {
+              detail: { reason: 'created', id: newRequest.id }
+            }));
+          }
+        } catch {}
         return newRequest;
       } else {
         const errorText = await response.text();
@@ -191,6 +199,14 @@ export function WasteRequestProvider({ children }: { children: ReactNode }) {
       
       setWasteRequests(prev => [newRequest, ...prev]);
       console.log('💾 Demande sauvegardée localement (fallback):', newRequest);
+      // Notifier les autres vues pour déclencher un rafraîchissement
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('waste_requests_updated', {
+            detail: { reason: 'created', id: newRequest.id, offline: true }
+          }));
+        }
+      } catch {}
       
       // Propager l'erreur pour informer l'utilisateur, mais avec un message plus clair
       if (error instanceof Error) {
@@ -207,10 +223,26 @@ export function WasteRequestProvider({ children }: { children: ReactNode }) {
         request.id === id ? { ...request, ...updates } : request
       )
     );
+    // Notifier
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('waste_requests_updated', {
+          detail: { reason: 'updated', id }
+        }));
+      }
+    } catch {}
   };
 
   const deleteWasteRequest = (id: string) => {
     setWasteRequests(prev => prev.filter(request => request.id !== id));
+    // Notifier
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('waste_requests_updated', {
+          detail: { reason: 'deleted', id }
+        }));
+      }
+    } catch {}
   };
 
   const getRecentRequests = (limit: number = 5) => {

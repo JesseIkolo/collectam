@@ -18,6 +18,9 @@ import CollectorScannerPage from "./pages/collecteur/CollectorScannerPage";
 import CollectorVehiclesPage from "./pages/collecteur/CollectorVehiclesPage";
 import CollectorProfilePage from "./pages/collecteur/CollectorProfilePage";
 import CollectorHistoryPage from "./pages/collecteur/CollectorHistoryPage";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { locationService } from "@/services/LocationService";
+import { toast } from "sonner";
 
 export function CollectorDashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -71,6 +74,40 @@ export function CollectorDashboard() {
       console.warn('Failed to refresh collector stats:', err);
     }
   };
+
+  // Mettre le collecteur "on duty" en mettant à jour sa position (déclenche l'auto-assign côté serveur)
+  const ensureOnDuty = async () => {
+    try {
+      const pos = await locationService.getCurrentPosition();
+      await locationService.updateCollectorLocation(pos);
+      toast.success('Position synchronisée. Recherche des demandes à proximité...');
+      await refreshCollectorStats();
+    } catch (e) {
+      console.warn('ensureOnDuty failed:', e);
+      try { toast.error('Impossible d\'activer la localisation'); } catch {}
+    }
+  };
+
+  // Au montage du dashboard, tenter d'activer la localisation et l'auto-assign
+  useEffect(() => {
+    ensureOnDuty();
+  }, []);
+
+  // Rafraîchir automatiquement les stats quand des événements temps réel surviennent
+  useWebSocket({
+    onNewWasteRequest: () => {
+      console.log('🔄 Nouveau assignement reçu (WS) → refresh stats');
+      refreshCollectorStats();
+    },
+    onCollectionStarted: () => {
+      console.log('🔄 Collection démarrée (WS) → refresh stats');
+      refreshCollectorStats();
+    },
+    onCollectionCompleted: () => {
+      console.log('🔄 Collection terminée (WS) → refresh stats');
+      refreshCollectorStats();
+    },
+  });
 
   if (loading) {
     return (
@@ -126,6 +163,10 @@ export function CollectorDashboard() {
               Carte Temps Réel
             </Button>
           </Link>
+          <Button variant="outline" className="flex items-center gap-2" onClick={ensureOnDuty}>
+            <Clock className="h-4 w-4" />
+            Activer ma localisation
+          </Button>
           <Badge variant="default" className="flex items-center gap-1">
             <Truck className="h-3 w-3" />
             Collecteur

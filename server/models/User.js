@@ -71,6 +71,13 @@ const userSchema = new mongoose.Schema({
       index: '2dsphere'
     }
   },
+  // Additional metadata for last location
+  locationAccuracy: {
+    type: Number
+  },
+  lastLocationUpdate: {
+    type: Date
+  },
   lastSeenAt: {
     type: Date
   },

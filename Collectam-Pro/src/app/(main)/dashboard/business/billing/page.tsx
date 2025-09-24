@@ -60,8 +60,8 @@ export default function BillingPage() {
   const [showPlanChange, setShowPlanChange] = useState(false);
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
 
-  // Plans disponibles (synchronisés avec BusinessPricing.tsx)
-  const availablePlans: Plan[] = [
+  // Plans par défaut (fallback) – seront remplacés par l'API si disponible
+  const defaultPlans: Plan[] = [
     {
       id: 'business-monthly',
       name: 'Mensuel',
@@ -103,8 +103,34 @@ export default function BillingPage() {
     }
   ];
 
+  const [availablePlans, setAvailablePlans] = useState<Plan[]>(defaultPlans);
+
   useEffect(() => {
     fetchBillingData();
+    // Charger les plans depuis le backend pour rester synchronisé
+    const loadPlans = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const res = await fetch('/api/business-subscription/plans', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const apiPlans = (data?.data?.plans || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            period: p.durationType === 'month' ? (p.duration === 1 ? '1 mois' : `${p.duration} mois`) : '1 an',
+            popular: !!p.popular,
+            features: p.features || []
+          })) as Plan[];
+          if (apiPlans.length) setAvailablePlans(apiPlans);
+        }
+      } catch (e) {
+        console.warn('Unable to load billing plans from API, using defaults.', e);
+      }
+    };
+    loadPlans();
   }, []);
 
   const fetchBillingData = async () => {
@@ -120,11 +146,12 @@ export default function BillingPage() {
       console.log('🔍 Raw localStorage user data:', rawUserData);
       
       // Si pas de planId dans subscription, essayer de le déduire du localStorage
-      let actualPlanId = userSubscription?.planId;
+      // Prendre en compte plan ou planId (selon backend)
+      let actualPlanId = userSubscription?.plan || userSubscription?.planId;
       if (!actualPlanId && rawUserData) {
         try {
           const parsedData = JSON.parse(rawUserData);
-          actualPlanId = parsedData?.subscription?.planId;
+          actualPlanId = parsedData?.subscription?.plan || parsedData?.subscription?.planId;
           console.log('🔍 Plan ID from raw localStorage:', actualPlanId);
         } catch (e) {
           console.warn('⚠️ Erreur parsing localStorage:', e);
@@ -293,24 +320,30 @@ Cette action est irréversible.`;
       if (!token) {
         throw new Error('Aucun token d\'authentification trouvé. Veuillez vous reconnecter.');
       }
-
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiUrl}/api/business-subscription/change-plan`, {
+      
+      // Utiliser le même endpoint que l'activation (le backend met à jour la subscription au plan demandé)
+      const response = await fetch(`/api/business-subscription/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ newPlanId })
+        body: JSON.stringify({ planId: newPlanId })
       });
 
       if (response.ok) {
         const data = await response.json();
         
-        // Mettre à jour les données utilisateur dans localStorage
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        userData.subscription = data.data.subscription;
-        localStorage.setItem('user', JSON.stringify(userData));
+        // Sauvegarder l'utilisateur complet renvoyé si présent
+        const updatedUser = data?.data?.user;
+        if (updatedUser) {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        } else {
+          // Fallback: mettre à jour uniquement la subscription
+          const userData = JSON.parse(localStorage.getItem('user') || '{}');
+          userData.subscription = data?.data?.subscription;
+          localStorage.setItem('user', JSON.stringify(userData));
+        }
 
         toast.success("Votre plan a été changé avec succès");
         setShowPlanChange(false);
@@ -331,14 +364,14 @@ Cette action est irréversible.`;
     const currentUser = AuthService.getUser();
     
     // Essayer plusieurs sources comme dans fetchBillingData
-    let planId = currentUser?.subscription?.planId;
+    let planId = currentUser?.subscription?.plan || currentUser?.subscription?.planId;
     
     if (!planId) {
       const rawUserData = localStorage.getItem('user');
       if (rawUserData) {
         try {
           const parsedData = JSON.parse(rawUserData);
-          planId = parsedData?.subscription?.planId;
+          planId = parsedData?.subscription?.plan || parsedData?.subscription?.planId;
         } catch (e) {
           console.warn('⚠️ Erreur parsing localStorage dans getCurrentPlanId:', e);
         }

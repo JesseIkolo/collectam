@@ -36,7 +36,26 @@ export function AssignedRequestsSection({ className, onUpdate }: AssignedRequest
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const router = useRouter();
-  const { notifyCollectionStarted, notifyCollectionCompleted } = useWebSocket();
+  const { notifyCollectionStarted, notifyCollectionCompleted } = useWebSocket({
+    onNewWasteRequest: (data) => {
+      console.log('🆕 WS: Nouvelle demande assignée reçue → rafraîchir liste', data);
+      try { toast.success('Nouvelle demande assignée'); } catch {}
+      loadAssignedRequests();
+      onUpdate?.();
+    },
+    onCollectionStarted: (data) => {
+      console.log('▶️ WS: Collecte démarrée → rafraîchir liste', data);
+      try { toast.info('Collecte démarrée'); } catch {}
+      loadAssignedRequests();
+      onUpdate?.();
+    },
+    onCollectionCompleted: (data) => {
+      console.log('✅ WS: Collecte terminée → rafraîchir liste', data);
+      try { toast.success('Collecte terminée'); } catch {}
+      loadAssignedRequests();
+      onUpdate?.();
+    }
+  });
 
   useEffect(() => {
     loadAssignedRequests();

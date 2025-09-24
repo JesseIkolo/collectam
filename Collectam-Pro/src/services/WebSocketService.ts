@@ -245,7 +245,7 @@ class WebSocketService {
       
       // Décoder le token JWT pour obtenir l'ID utilisateur
       const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload._id || null;
+      return payload._id || payload.id || null;
     } catch (error) {
       console.error('Erreur décodage token:', error);
       return null;

@@ -54,7 +54,9 @@ router.get('/user', authenticateToken, async (req, res) => {
       },
       wasteType: request.wasteType,
       description: request.description,
-      estimatedWeight: request.quantity, // Mapping quantity -> estimatedWeight
+      // WasteRequest utilise 'estimatedWeight'. Si ce route est basculé vers WasteCollectionRequest,
+      // prévoir un fallback vers 'quantity'.
+      estimatedWeight: (typeof request.estimatedWeight === 'number' ? request.estimatedWeight : request.quantity),
       address: request.address,
       coordinates: request.coordinates,
       preferredDate: request.preferredDate,

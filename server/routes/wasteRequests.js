@@ -200,6 +200,31 @@ router.patch('/:id/cancel',
 
 /**
  * @swagger
+ * /api/waste-requests/{id}/assign-nearest:
+ *   patch:
+ *     summary: Manually assign the nearest available collector to a pending request
+ *     tags: [Waste Requests]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Collecteur assigné ou message si aucun collecteur disponible
+ */
+router.patch('/:id/assign-nearest',
+  authenticateToken,
+  param('id').isMongoId().withMessage('ID invalide'),
+  handleValidationErrors,
+  WasteRequestController.assignNearestCollector
+);
+
+/**
+ * @swagger
  * /api/waste-requests/stats:
  *   get:
  *     summary: Get waste request statistics

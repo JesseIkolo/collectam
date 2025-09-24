@@ -109,45 +109,51 @@ class WasteRequestService {
     console.log('🗑️ Récupération des demandes de l\'utilisateur...');
     
     try {
-      // Essayer d'abord l'endpoint waste-collection-requests (nouveau modèle)
-      let response;
-      try {
-        response = await this.makeRequest('/waste-collection-requests/user');
-        console.log('✅ Demandes récupérées depuis waste-collection-requests:', response.data?.length || 0);
-      } catch (error) {
-        console.warn('⚠️ Endpoint waste-collection-requests non disponible, essai avec waste-requests...');
-        // Fallback vers l'ancien endpoint
-        response = await this.makeRequest('/waste-requests');
-        console.log('✅ Demandes récupérées depuis waste-requests:', response.data?.length || 0);
-      }
-      
-      const requests = response.data || [];
-      
-      // Formatter les demandes pour s'assurer que les coordonnées sont correctes
-      const formattedRequests = requests.map((request: any) => {
-        let formattedCoordinates = null;
-        
+      // Récupérer les deux sources et fusionner (nouveau et ancien modèle)
+      const [newModelResult, oldModelResult] = await Promise.allSettled([
+        this.makeRequest('/waste-collection-requests/user'),
+        this.makeRequest('/waste-requests')
+      ]);
+
+      const newModelData: any[] = newModelResult.status === 'fulfilled' ? (newModelResult.value.data || []) : [];
+      const oldModelData: any[] = oldModelResult.status === 'fulfilled' ? (oldModelResult.value.data || []) : [];
+
+      console.log('✅ Demandes récupérées:', {
+        newModel: newModelData.length,
+        oldModel: oldModelData.length
+      });
+
+      // Fusionner et dédupliquer par identifiant (_id ou id)
+      const byId = new Map<string, any>();
+      const push = (req: any) => {
+        const id = req._id || req.id;
+        if (!id) return;
+        if (!byId.has(id)) byId.set(id, req);
+      };
+      newModelData.forEach(push);
+      oldModelData.forEach(push);
+
+      const merged = Array.from(byId.values());
+
+      // Formatter les demandes pour normaliser les coordonnées
+      const formattedRequests = merged.map((request: any) => {
+        let formattedCoordinates: [number, number] | null = null;
+
         if (request.coordinates) {
           if (Array.isArray(request.coordinates) && request.coordinates.length === 2) {
-            // Format: [lng, lat]
-            formattedCoordinates = request.coordinates;
+            formattedCoordinates = request.coordinates as [number, number];
           } else if (request.coordinates.coordinates && Array.isArray(request.coordinates.coordinates)) {
-            // Format GeoJSON: { type: 'Point', coordinates: [lng, lat] }
-            formattedCoordinates = request.coordinates.coordinates;
+            formattedCoordinates = request.coordinates.coordinates as [number, number];
           }
         }
-        
+
         return {
           ...request,
           coordinates: formattedCoordinates
         };
       });
-      
-      console.log('📋 Demandes formatées:', formattedRequests.length);
-      formattedRequests.forEach((req: any) => {
-        console.log(`- ${req._id}: ${req.wasteType} à ${req.address}, coords:`, req.coordinates);
-      });
-      
+
+      console.log('📋 Demandes formatées (fusionnées):', formattedRequests.length);
       return formattedRequests;
     } catch (error) {
       console.error('❌ Erreur récupération demandes utilisateur:', error);
@@ -164,7 +170,16 @@ class WasteRequestService {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return response.data;
+    const created = response.data;
+    // Notifier l'application qu'une demande a été créée (pour rafraîchir les métriques)
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('waste_requests_updated', {
+          detail: { reason: 'created', id: created?._id || created?.id }
+        }));
+      }
+    } catch {}
+    return created;
   }
 
   /**
@@ -189,6 +204,26 @@ class WasteRequestService {
       body: JSON.stringify({ reason }),
     });
     return response.data;
+  }
+
+  /**
+   * Assigner automatiquement le collecteur le plus proche à une demande en attente
+   */
+  async assignNearest(id: string): Promise<WasteRequest> {
+    console.log('🗑️ Assignation automatique (nearest) pour la demande:', id);
+    const response = await this.makeRequest(`/waste-requests/${id}/assign-nearest`, {
+      method: 'PATCH',
+    });
+    const updated = response.data;
+    // Notifier l'application (rafraîchir dashboards/tables)
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('waste_requests_updated', {
+          detail: { reason: 'updated', id }
+        }));
+      }
+    } catch {}
+    return updated;
   }
 
   /**

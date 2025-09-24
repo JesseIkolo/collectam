@@ -153,18 +153,10 @@ const CollectamMap: React.FC<CollectamMapProps> = ({
           completed: '#10B981', // Vert
           cancelled: '#6B7280' // Gris
         };
-        
-        // Style avec effet de battement de cœur pour les demandes actives
-        const isActive = marker.status === 'pending' || marker.status === 'scheduled';
+        // Style sans effet de battement (stabilise l'ancrage du marqueur)
         return { 
           ...baseStyle, 
-          backgroundColor: statusColors[marker.status as keyof typeof statusColors] || '#FF0000',
-          boxShadow: isActive 
-            ? '0 0 20px rgba(255, 0, 0, 0.8), 0 2px 10px rgba(0,0,0,0.3)' 
-            : '0 2px 10px rgba(0,0,0,0.3)',
-          animation: isActive ? 'heartbeat 1.5s ease-in-out infinite' : 'none',
-          width: isActive ? '40px' : '32px',
-          height: isActive ? '40px' : '32px'
+          backgroundColor: statusColors[marker.status as keyof typeof statusColors] || '#FF0000'
         };
       case 'collection-point':
         return { ...baseStyle, backgroundColor: '#F97316' }; // Orange foncé
@@ -297,7 +289,14 @@ const CollectamMap: React.FC<CollectamMapProps> = ({
     markersRef.current = {};
 
     // Ajouter les nouveaux marqueurs
+    const seenIds = new Set<string>();
     markers.forEach(markerData => {
+      // Sécurité: ignorer les marqueurs avec ID dupliqué dans le même rendu
+      if (seenIds.has(markerData.id)) {
+        console.warn(`⚠️ ID de marqueur dupliqué ignoré: ${markerData.id}`);
+        return;
+      }
+      seenIds.add(markerData.id);
       try {
         // Créer l'élément DOM pour le marqueur
         const el = document.createElement('div');
@@ -309,7 +308,7 @@ const CollectamMap: React.FC<CollectamMapProps> = ({
         el.title = markerData.popup?.title || `${markerData.type} - ${markerData.id}`;
 
         // Créer le marqueur MapTiler
-        const marker = new maptilersdk.Marker({ element: el })
+        const marker = new maptilersdk.Marker({ element: el, anchor: 'center' as any })
           .setLngLat(markerData.coordinates)
           .addTo(map.current!);
 
@@ -350,19 +349,7 @@ const CollectamMap: React.FC<CollectamMapProps> = ({
           }
         }
 
-        // Surligner le marqueur si demandé
-        if (highlightMarkerId && markerData.id === highlightMarkerId) {
-          try {
-            el.classList.add('collectam-highlight');
-            // Ouvrir le popup si disponible
-            // @ts-ignore - togglePopup may exist depending on SDK version
-            marker.togglePopup && marker.togglePopup();
-            // Retirer le surlignage après 4.5s
-            setTimeout(() => el.classList.remove('collectam-highlight'), 4500);
-          } catch (e) {
-            console.warn('⚠️ Impossible de surligner/ouvrir le popup du marqueur', e);
-          }
-        }
+        // Pas de surlignage automatique pour éviter tout décalage visuel
 
         // Gestion du clic sur le marqueur
         el.addEventListener('click', () => {

@@ -28,10 +28,8 @@ interface CollectorFormData {
   position: string;
   status: string;
   workZone: string;
-  street: string;
   city: string;
   region: string;
-  postalCode: string;
   salaryAmount: string;
   paymentFrequency: string;
   notes: string;
@@ -47,10 +45,8 @@ export default function EditBusinessCollectorForm({ collector, onCancel, onSucce
     position: collector.position || 'Collecteur',
     status: collector.status || 'actif',
     workZone: collector.workZone || '',
-    street: collector.address?.street || '',
     city: collector.address?.city || '',
     region: collector.address?.region || '',
-    postalCode: collector.address?.postalCode || '',
     salaryAmount: collector.salary?.amount?.toString() || '',
     paymentFrequency: collector.salary?.paymentFrequency || 'mensuel',
     notes: ''
@@ -127,10 +123,8 @@ export default function EditBusinessCollectorForm({ collector, onCancel, onSucce
         status: formData.status,
         workZone: formData.workZone.trim() || undefined,
         address: {
-          street: formData.street.trim() || undefined,
           city: formData.city.trim() || undefined,
           region: formData.region.trim() || undefined,
-          postalCode: formData.postalCode.trim() || undefined,
           country: 'Cameroun'
         },
         salary: formData.salaryAmount ? {
@@ -371,17 +365,7 @@ export default function EditBusinessCollectorForm({ collector, onCancel, onSucce
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="street">Rue</Label>
-              <Input
-                id="street"
-                value={formData.street}
-                onChange={(e) => handleInputChange('street', e.target.value)}
-                placeholder="Ex: 123 Rue de la Paix"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="city">Ville</Label>
                 <Input
@@ -398,15 +382,6 @@ export default function EditBusinessCollectorForm({ collector, onCancel, onSucce
                   value={formData.region}
                   onChange={(e) => handleInputChange('region', e.target.value)}
                   placeholder="Ex: Littoral"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="postalCode">Code Postal</Label>
-                <Input
-                  id="postalCode"
-                  value={formData.postalCode}
-                  onChange={(e) => handleInputChange('postalCode', e.target.value)}
-                  placeholder="Ex: BP 1234"
                 />
               </div>
             </div>
